@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
 import { unstable_cache } from "next/cache";
 import { normalizeWikiLanguage } from "@/lib/wiki-language";
 
@@ -492,7 +493,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function appendStyle($el: cheerio.Cheerio<cheerio.Element>, style: string) {
+function appendStyle($el: cheerio.Cheerio<Element>, style: string) {
   const current = ($el.attr("style") ?? "").trim();
   const suffix = current && !current.endsWith(";") ? ";" : "";
   $el.attr("style", `${current}${suffix}${style}`);
