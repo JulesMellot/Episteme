@@ -4,6 +4,11 @@ Episteme is an alternative to Wikiwand: a fast, clean, typography-first Wikipedi
 
 The goal is simple: make Wikipedia more comfortable to read and explore, while keeping the product **free forever**.
 
+## Public instance
+
+You can use Episteme right now on the public instance:
+https://episteme.tllm.fr/
+
 ## Please donate to Wikipedia
 
 Episteme exists because Wikipedia exists.
