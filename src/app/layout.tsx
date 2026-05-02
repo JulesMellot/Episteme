@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
@@ -30,6 +31,11 @@ export default function RootLayout({
         className={`${sora.variable} ${jetbrainsMono.variable} font-sans`}
         suppressHydrationWarning
       >
+        <Script
+          defer
+          src="https://analytics.tllm.fr/script.js"
+          data-website-id="689935b1-94de-4ed8-9a85-cb7244507d0c"
+        />
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="system"
