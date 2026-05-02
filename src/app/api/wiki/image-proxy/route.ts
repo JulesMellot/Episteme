@@ -4,6 +4,19 @@ const USER_AGENT =
   process.env.WIKIPEDIA_USER_AGENT ??
   "EpistemeReader/1.0 (+https://episteme.local)";
 
+function isAllowedWikiHost(hostname: string) {
+  const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
+  if (!normalized) return false;
+  return (
+    normalized === "wikipedia.org" ||
+    normalized.endsWith(".wikipedia.org") ||
+    normalized === "wikimedia.org" ||
+    normalized.endsWith(".wikimedia.org") ||
+    normalized === "mediawiki.org" ||
+    normalized.endsWith(".mediawiki.org")
+  );
+}
+
 function isAllowedRemoteUrl(value: string) {
   try {
     const url = new URL(value);
@@ -15,6 +28,28 @@ function isAllowedRemoteUrl(value: string) {
     );
   } catch {
     return false;
+  }
+}
+
+function buildWikimediaMapReferer(remoteUrl: string) {
+  try {
+    const url = new URL(remoteUrl);
+    if (url.hostname !== "maps.wikimedia.org") return null;
+
+    const domain = url.searchParams.get("domain")?.trim().toLowerCase() ?? "";
+    const title = url.searchParams.get("title")?.trim() ?? "";
+    if (!domain || !isAllowedWikiHost(domain)) {
+      return "https://www.wikipedia.org/";
+    }
+
+    if (!title) {
+      return `https://${domain}/`;
+    }
+
+    const encodedTitle = encodeURIComponent(title.replace(/\s+/g, "_"));
+    return `https://${domain}/wiki/${encodedTitle}`;
+  } catch {
+    return null;
   }
 }
 
@@ -31,13 +66,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "URL not allowed." }, { status: 400 });
   }
 
+  const referer = buildWikimediaMapReferer(remoteUrl);
+  const upstreamHeaders = new Headers({
+    "User-Agent": USER_AGENT,
+    "Api-User-Agent": USER_AGENT,
+    Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+  });
+  if (referer) {
+    upstreamHeaders.set("Referer", referer);
+    upstreamHeaders.set("Origin", new URL(referer).origin);
+  }
+
   const upstream = await fetch(remoteUrl, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      "Api-User-Agent": USER_AGENT,
-      Accept:
-        "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-    },
+    headers: upstreamHeaders,
     next: {
       revalidate: 60 * 60,
       tags: ["wikimedia-image-proxy"],
