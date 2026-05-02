@@ -44,6 +44,7 @@ const USER_AGENT = process.env.WIKIPEDIA_USER_AGENT ?? "EpistemeReader/1.0 (+htt
 const ARTICLE_REVALIDATE_SECONDS = 3600;
 const SEARCH_REVALIDATE_SECONDS = 300;
 const DEFAULT_RETRIES = 2;
+const INTERLANGUAGE_SOURCE_CANDIDATES = ["fr", "en", "es", "de", "it", "pt", "ja", "zh", "ar", "ru"] as const;
 const BLOCKED_SELECTOR = "script, style, iframe, frame, object, embed, form, link[rel='stylesheet'], meta[http-equiv='refresh']";
 const STRIPPED_ATTRS = new Set([
   "about",
@@ -244,6 +245,85 @@ function normalizeFileTitle(title: string) {
   return normalized;
 }
 
+interface WikipediaLanguageLink {
+  code?: string;
+  key?: string;
+  title?: string;
+}
+
+async function resolveInterlanguageTitle(
+  slug: string,
+  {
+    targetLanguage,
+    retries = DEFAULT_RETRIES,
+  }: {
+    targetLanguage: string;
+    retries?: number;
+  }
+): Promise<string | null> {
+  const normalizedTarget = normalizeWikiLanguage(targetLanguage);
+  const normalizedSlug = normalizeSlug(slug);
+  if (!normalizedSlug) return null;
+
+  const sourceCandidates = Array.from(
+    new Set([normalizedTarget, ...INTERLANGUAGE_SOURCE_CANDIDATES])
+  );
+
+  for (const sourceLanguage of sourceCandidates) {
+    const url = new URL(
+      `${wikipediaApiBase(sourceLanguage)}/w/rest.php/v1/page/${encodeURIComponent(normalizedSlug)}/links/language`
+    );
+
+    const res = await fetchWithRetries(
+      url,
+      {
+        cache: "force-cache",
+        headers: {
+          "User-Agent": USER_AGENT,
+          "Api-User-Agent": USER_AGENT,
+          "Accept": "application/json",
+        },
+        next: {
+          revalidate: ARTICLE_REVALIDATE_SECONDS,
+          tags: ["wikipedia-langlinks"],
+        },
+      },
+      { retries }
+    );
+
+    if (!res || !res.ok) {
+      continue;
+    }
+
+    let data: WikipediaLanguageLink[] | null = null;
+    try {
+      data = (await res.json()) as WikipediaLanguageLink[];
+    } catch {
+      continue;
+    }
+
+    if (!Array.isArray(data)) {
+      continue;
+    }
+
+    const targetMatch = data.find(
+      (entry) =>
+        normalizeWikiLanguage(typeof entry?.code === "string" ? entry.code : undefined) ===
+        normalizedTarget
+    );
+    const title =
+      (typeof targetMatch?.key === "string" && targetMatch.key.trim()) ||
+      (typeof targetMatch?.title === "string" && targetMatch.title.trim()) ||
+      "";
+
+    if (title) {
+      return title.replace(/_/g, " ").trim();
+    }
+  }
+
+  return null;
+}
+
 async function getPageUncached(slug: string, retries = DEFAULT_RETRIES, language?: string): Promise<WikipediaPage | null> {
   if (isFileSlug(slug)) {
     const file = await getFile(slug, retries, language);
@@ -253,21 +333,27 @@ async function getPageUncached(slug: string, retries = DEFAULT_RETRIES, language
   const article = await getArticle(slug, retries, language);
   if (article) return { kind: "article", ...article };
 
-  // If the exact title does not exist in the selected language,
-  // try one local search to find the translated/closest page title.
   const normalizedLanguage = normalizeWikiLanguage(language);
-  if (normalizedLanguage !== "en") {
-    const guessQuery = normalizeSlug(slug);
-    const candidates = await searchWikipedia(guessQuery, {
-      limit: 1,
-      retries,
-      language: normalizedLanguage,
-    });
-    const bestTitle = candidates[0]?.title;
-    if (bestTitle) {
-      const translated = await getArticle(bestTitle, retries, normalizedLanguage);
-      if (translated) return { kind: "article", ...translated };
-    }
+  const translatedTitle = await resolveInterlanguageTitle(slug, {
+    targetLanguage: normalizedLanguage,
+    retries,
+  });
+  if (translatedTitle) {
+    const translated = await getArticle(translatedTitle, retries, normalizedLanguage);
+    if (translated) return { kind: "article", ...translated };
+  }
+
+  // If interlanguage links do not resolve, try local search in target language.
+  const guessQuery = normalizeSlug(slug);
+  const candidates = await searchWikipedia(guessQuery, {
+    limit: 1,
+    retries,
+    language: normalizedLanguage,
+  });
+  const bestTitle = candidates[0]?.title;
+  if (bestTitle) {
+    const translated = await getArticle(bestTitle, retries, normalizedLanguage);
+    if (translated) return { kind: "article", ...translated };
   }
 
   return null;
