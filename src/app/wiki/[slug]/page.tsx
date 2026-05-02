@@ -1,0 +1,184 @@
+import { getPage } from "@/lib/wikipedia";
+import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
+import { WikiMediaModal } from "@/components/WikiMediaModal";
+import { notFound } from "next/navigation";
+import { Metadata } from "next";
+import Image from "next/image";
+import { normalizeWikiLanguage, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
+import { cookies } from "next/headers";
+import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
+
+interface PageProps {
+  params: Promise<{
+    slug: string;
+  }>;
+  searchParams: Promise<{
+    lang?: string | string[];
+  }>;
+}
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const { lang } = await searchParams;
+  const decodedSlug = decodeURIComponent(slug).replace(/_/g, " ");
+  const cookieStore = await cookies();
+  const language = normalizeWikiLanguage(
+    (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
+  );
+  
+  return {
+    title: `${decodedSlug} (${language}) - Episteme`,
+    description: `Read about ${decodedSlug} from Wikipedia (${language}) on Episteme.`,
+  };
+}
+
+export default async function WikiPage({ params, searchParams }: PageProps) {
+  const { slug } = await params;
+  const { lang } = await searchParams;
+  const cookieStore = await cookies();
+  const language = normalizeWikiLanguage(
+    (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
+  );
+  const page = await getPage(slug, 2, language);
+
+  if (!page) {
+    notFound();
+  }
+
+  if (page.kind === "file") {
+    const imageSrc = page.thumbUrl ?? page.fileUrl;
+
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950">
+        <Header initialLanguage={language} />
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1200px]">
+          <header className="mb-10 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight leading-[1.1]">
+              {page.title}
+            </h1>
+            {page.summary && (
+              <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-[75ch]">
+                {page.summary}
+              </p>
+            )}
+          </header>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
+            <div className="min-w-0">
+              <div className="rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/20 overflow-hidden">
+                <a href={page.fileUrl} target="_blank" rel="noreferrer">
+                  <Image
+                    src={imageSrc}
+                    alt={page.title}
+                    width={page.width ?? 1600}
+                    height={page.height ?? 900}
+                    sizes="(max-width: 1024px) 100vw, 800px"
+                    className="w-full h-auto block"
+                    priority
+                  />
+                </a>
+              </div>
+
+              {page.descriptionHtml && (
+                <div className="mt-8 wiki-content">
+                  <div dangerouslySetInnerHTML={{ __html: page.descriptionHtml }} />
+                </div>
+              )}
+
+              <WikiDonationCTAClient />
+            </div>
+
+            <aside className="w-full lg:sticky lg:top-28 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/40 p-6">
+              <div className="text-xs font-mono text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                File
+              </div>
+              <div className="mt-4 space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-zinc-500 dark:text-zinc-400">Type</span>
+                  <span className="text-right font-mono">{page.mime ?? "—"}</span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-zinc-500 dark:text-zinc-400">Dimensions</span>
+                  <span className="text-right font-mono">
+                    {page.width && page.height ? `${page.width}×${page.height}` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-zinc-500 dark:text-zinc-400">Source</span>
+                  <a
+                    href={page.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-right font-mono text-zinc-900 dark:text-zinc-100 hover:underline"
+                  >
+                    Open
+                  </a>
+                </div>
+                {page.licenseHtml && (
+                  <div className="pt-3 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                    <div className="text-zinc-500 dark:text-zinc-400 mb-1">License</div>
+                    <div
+                      className="font-mono text-sm text-zinc-900 dark:text-zinc-100"
+                      dangerouslySetInnerHTML={{ __html: page.licenseHtml }}
+                    />
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
+      <Header initialLanguage={language} />
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1600px] flex flex-col lg:flex-row items-start justify-center gap-8 lg:gap-12">
+        {/* Left Sidebar: Table of Contents */}
+        <Sidebar toc={page.toc} />
+        
+        {/* Middle Column: Main Content */}
+        <article className="flex-1 min-w-0 w-full max-w-[700px] xl:max-w-[760px] pb-32 order-1 lg:order-none">
+          <header className="mb-14 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tighter leading-[1.1] mb-6">
+              {page.title}
+            </h1>
+            
+            {page.summary && (
+              <p className="text-lg text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6 max-w-[60ch] tracking-tight">
+                {page.summary}
+              </p>
+            )}
+            
+          </header>
+
+          <div 
+            className="wiki-content relative w-full max-w-full"
+            dangerouslySetInnerHTML={{ __html: page.html }}
+          />
+
+          <WikiDonationCTAClient />
+        </article>
+
+        {/* Right Sidebar: Infobox */}
+        {page.infoboxHtml && (
+          <aside className="w-full lg:w-[320px] xl:w-[360px] shrink-0 order-first lg:order-last mb-12 lg:mb-0 lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)]">
+            <div className="relative h-full rounded-3xl overflow-hidden">
+              <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-hide pb-12">
+                <div 
+                  className="wiki-infobox"
+                  dangerouslySetInnerHTML={{ __html: page.infoboxHtml }}
+                />
+              </div>
+              <div className="scroll-hint-fade scroll-hint-fade--box" aria-hidden />
+            </div>
+          </aside>
+        )}
+      </main>
+      <div className="scroll-hint-fade scroll-hint-fade--page" aria-hidden />
+      <WikiMediaModal language={language} />
+    </div>
+  );
+}

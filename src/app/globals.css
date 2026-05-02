@@ -1,26 +1,734 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *, [data-theme=dim], [data-theme=dim] *));
+
+@theme {
+  --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer utilities {
+  .wiki-content {
+    @apply text-[15px] leading-[1.8] text-zinc-600 dark:text-zinc-400 font-sans antialiased;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  .wiki-content * {
+    box-sizing: border-box;
+  }
+
+  .wiki-content > * {
+    max-width: 100%;
+  }
+
+  .wiki-content .mw-parser-output,
+  .wiki-content .mw-parser-output > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* Constrain common fixed-width media wrappers injected by Wikipedia */
+  .wiki-content div[style*="width"],
+  .wiki-content figure[style*="width"],
+  .wiki-content table[style*="width"] {
+    max-width: 100% !important;
+  }
+  
+  .wiki-content p {
+    @apply mb-6 tracking-[-0.01em];
+  }
+  
+  .wiki-content h2 {
+    @apply text-2xl font-semibold tracking-tight mt-14 mb-5 pb-3 border-b border-zinc-100 dark:border-zinc-800/60 text-zinc-900 dark:text-zinc-100;
+  }
+  
+  .wiki-content h3 {
+    @apply text-xl font-medium tracking-tight mt-10 mb-4 text-zinc-900 dark:text-zinc-100;
+  }
+
+  .wiki-content h4 {
+    @apply text-base font-semibold uppercase tracking-widest mt-8 mb-3 text-zinc-500 dark:text-zinc-500;
+  }
+  
+  .wiki-content a {
+    @apply text-zinc-900 dark:text-zinc-100 font-medium decoration-zinc-200 dark:decoration-zinc-800 underline underline-offset-4 hover:decoration-zinc-400 dark:hover:decoration-zinc-600 transition-colors duration-200;
+  }
+  
+  .wiki-content ul {
+    @apply list-disc list-outside mb-6 ml-5 space-y-2;
+  }
+  
+  .wiki-content ol {
+    @apply list-decimal list-outside mb-6 ml-5 space-y-2 text-zinc-500;
+  }
+
+  .wiki-content ul li {
+    @apply text-zinc-600 dark:text-zinc-400;
+  }
+  
+  /* Content Infoboxes (if any remain in text) and Main Right Infobox */
+  .wiki-content table.infobox {
+    @apply hidden; /* Hide inline infoboxes, rely entirely on the extracted sidebar one */
+  }
+
+  /* Dedicated Right Sidebar Infobox */
+  .wiki-infobox table {
+    @apply w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_8px_30px_rgba(0,0,0,0.2)] rounded-3xl p-1 overflow-hidden text-[13px] font-sans text-zinc-600 dark:text-zinc-400 ring-1 ring-zinc-200/50 dark:ring-zinc-800/50;
+  }
+  
+  .wiki-infobox tbody {
+    @apply block p-5;
+  }
+
+  .wiki-infobox tr {
+    @apply flex flex-col sm:flex-row gap-1 sm:gap-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0;
+  }
+  
+  .wiki-infobox th {
+    @apply text-left font-medium text-zinc-500 dark:text-zinc-500 sm:w-1/3 shrink-0;
+  }
+  
+  .wiki-infobox td {
+    @apply text-zinc-800 dark:text-zinc-200 flex-1;
+  }
+
+  /* Normalize inline Wikimedia colors so custom themes remain coherent. */
+  .wiki-infobox table,
+  .wiki-infobox tr,
+  .wiki-infobox td {
+    background-color: transparent !important;
+    color: var(--wiki-infobox-text) !important;
+    border-color: var(--wiki-infobox-row-border) !important;
+  }
+
+  .wiki-infobox th {
+    color: var(--wiki-infobox-muted) !important;
+  }
+  
+  .wiki-infobox .bento-image-grid {
+    @apply mb-5 w-full bg-zinc-50 dark:bg-zinc-900/30 p-1.5 rounded-[1rem] border border-zinc-100 dark:border-zinc-800/50;
+  }
+  
+  .wiki-infobox .bento-image-grid > div {
+    @apply rounded-[0.6rem] overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none;
+  }
+
+  .wiki-infobox .bento-image-grid img {
+    @apply m-0 w-full h-full object-cover rounded-none border-0 shadow-none bg-transparent;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  .wiki-infobox .infobox-image {
+    @apply block w-full mb-6 text-center overflow-hidden rounded-[1rem] bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50;
+  }
+
+  .wiki-infobox .infobox-image tr {
+    @apply block p-2 border-0;
+  }
+
+  .wiki-infobox .infobox-image img {
+    @apply max-w-full h-auto rounded-xl object-contain;
+    width: auto !important;
+  }
+
+  /* Keep map tiles/markers at their native size (do not stretch marker icons). */
+  .wiki-infobox .mw-kartographer-map img,
+  .wiki-content .mw-kartographer-map img {
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    object-fit: initial !important;
+  }
+  
+  .wiki-infobox .infobox-title {
+    @apply block text-lg font-semibold tracking-tight text-center mb-6 pb-4 border-b border-zinc-200/50 dark:border-zinc-800/50 text-zinc-900 dark:text-zinc-100;
+  }
+
+  /* Reset lists inside infoboxes */
+  .wiki-infobox ul,
+  .wiki-infobox ol {
+    @apply mb-0 space-y-1 list-none pl-0;
+  }
+
+  .wiki-infobox ul li::before {
+    @apply hidden;
+  }
+
+  .wiki-infobox li {
+    @apply pl-0 pb-1;
+  }
+
+  .wiki-infobox a {
+    @apply text-zinc-900 dark:text-zinc-100 font-medium decoration-zinc-200 dark:decoration-zinc-700 underline underline-offset-2 hover:decoration-zinc-400 dark:hover:decoration-zinc-500 transition-colors;
+  }
+  
+  /* Hatnotes (e.g. "For other uses, see...") */
+  .wiki-content .hatnote {
+    @apply text-[13px] text-zinc-500 dark:text-zinc-500 mb-8 pl-4 border-l-2 border-zinc-200 dark:border-zinc-800 tracking-tight;
+  }
+
+  .wiki-content .hatnote a {
+    @apply font-normal underline-offset-2;
+  }
+  
+  /* Thumbnails */
+  .wiki-content .thumb {
+    @apply my-12 w-full max-w-full float-none clear-both bg-transparent border-0 p-0 block;
+    float: none !important;
+  }
+  
+  .wiki-content .tright,
+  .wiki-content .tleft,
+  .wiki-content .tnone,
+  .wiki-content .tcenter,
+  .wiki-content figure {
+    @apply float-none ml-0 mr-0 mb-10 w-full max-w-full block;
+  }
+  
+  .wiki-content .thumbinner {
+    @apply flex flex-col w-full max-w-full;
+  }
+  
+  .wiki-content .thumbcaption,
+  .wiki-content figcaption {
+    @apply mt-4 text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed text-center px-4 font-mono w-full;
+  }
+  
+  /* OVERRIDE INLINE STYLES: Wikipedia injects hardcoded width/height directly onto elements */
+  .wiki-content .thumbinner > a {
+    @apply block w-full max-w-full;
+  }
+
+  .wiki-content .thumbinner img {
+    @apply max-w-full h-auto max-h-[600px] object-contain rounded-2xl ring-1 ring-zinc-200/50 dark:ring-zinc-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)];
+    width: auto !important;
+    height: auto !important;
+  }
+
+  /* Keep generic figure images at their native size to avoid blown-up utility icons. */
+  .wiki-content figure img {
+    @apply max-w-full h-auto rounded-xl object-contain;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  
+  .wiki-content img:not(.mwe-math-fallback-image-inline):not(.mwe-math-fallback-image-display) {
+    @apply max-w-full h-auto rounded-xl;
+    width: auto;
+  }
+
+  .wiki-content .wiki-media-large-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .wiki-content img.wiki-media-large {
+    @apply w-full max-w-full h-auto rounded-xl;
+  }
+
+  .wiki-content img.wiki-media-small {
+    width: auto !important;
+    max-width: 100%;
+  }
+
+  /* Math formulas (Wikipedia Math extension): inline + block rendering */
+  .wiki-content .mwe-math-element,
+  .wiki-content .texhtml {
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: middle;
+  }
+
+  .wiki-content .mwe-math-fallback-image-inline,
+  .wiki-content .mwe-math-fallback-image-display,
+  .wiki-content img.mwe-math-fallback-image-inline,
+  .wiki-content img.mwe-math-fallback-image-display {
+    display: inline-block;
+    margin: 0;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .wiki-content p > .mwe-math-element:only-child,
+  .wiki-content li > .mwe-math-element:only-child,
+  .wiki-content dd > .mwe-math-element:only-child {
+    display: block;
+    width: 100%;
+    margin: 0.75rem 0;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .wiki-content p > .mwe-math-element:only-child img,
+  .wiki-content li > .mwe-math-element:only-child img,
+  .wiki-content dd > .mwe-math-element:only-child img {
+    display: block;
+    margin: 0 auto;
+  }
+
+  .wiki-content svg {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Tables */
+  .wiki-content .wiki-table-wrap {
+    @apply my-8 max-w-full overflow-x-auto overflow-y-hidden rounded-2xl bg-white dark:bg-zinc-900/30 ring-1 ring-zinc-200/50 dark:ring-zinc-800/50;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .wiki-content .wiki-table-wrap > table {
+    @apply my-0 text-[13px] border-collapse bg-transparent;
+    width: max-content !important;
+    min-width: 100% !important;
+  }
+  
+  .wiki-content .wiki-table-wrap > table th,
+  .wiki-content .wiki-table-wrap > table td {
+    @apply border-b border-zinc-100 dark:border-zinc-800/50 px-4 py-3;
+    white-space: nowrap;
+  }
+  
+  .wiki-content .wiki-table-wrap > table th {
+    @apply bg-zinc-50/50 dark:bg-zinc-800/30 font-medium text-zinc-500 dark:text-zinc-400 text-left uppercase tracking-wider text-[11px];
+  }
+
+  .wiki-content .wiki-table-wrap {
+    background-color: var(--wiki-table-wrap-bg) !important;
+    border-color: var(--wiki-table-wrap-border) !important;
+  }
+
+  .wiki-content .wiki-table-wrap > table,
+  .wiki-content .wiki-table-wrap > table tr,
+  .wiki-content .wiki-table-wrap > table td {
+    background-color: var(--wiki-table-cell-bg) !important;
+    color: var(--wiki-table-text) !important;
+    border-color: var(--wiki-table-border) !important;
+  }
+
+  .wiki-content .wiki-table-wrap > table th {
+    background-color: var(--wiki-table-head-bg) !important;
+    color: var(--wiki-table-head-text) !important;
+    border-color: var(--wiki-table-border) !important;
+  }
+
+  .wiki-content .wiki-table-wrap > table [style*="background"],
+  .wiki-content .wiki-table-wrap > table [style*="background-color"],
+  .wiki-content .wiki-table-wrap > table [bgcolor] {
+    background-image: none !important;
+  }
+
+  .wiki-content .wiki-table-wrap > table tr:last-child td {
+    @apply border-b-0;
+  }
+
+  /* Climate diagram from frwiki Module:Climat (TemplateStyles are not loaded here). */
+  .wiki-content .diag-climat {
+    margin: 1em auto;
+    max-width: 40em;
+    border: 1px solid var(--wiki-diag-border);
+    border-radius: 6px;
+    padding: 0.6em 0.8em;
+    background: var(--wiki-diag-bg);
+    color: var(--wiki-diag-text);
+  }
+
+  .wiki-content .diag-climat-titre {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95em;
+    margin-bottom: 0.4em;
+  }
+
+  .wiki-content .diag-climat-barres {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    gap: 2px;
+  }
+
+  .wiki-content .diag-climat-separator {
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    height: 1px;
+    background: var(--wiki-diag-separator);
+    z-index: 3;
+  }
+
+  .wiki-content .diag-climat-mois {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .wiki-content .diag-climat-zone {
+    position: relative;
+    width: 100%;
+    height: 11em;
+    overflow: visible;
+  }
+
+  .wiki-content .diag-climat-barre-prec {
+    position: absolute;
+    bottom: 0;
+    left: 12%;
+    width: 76%;
+    background: linear-gradient(to top, #0097a7, #4dd0e1);
+    border-radius: 2px 2px 0 0;
+    opacity: 0.7;
+    min-height: 1px;
+    z-index: 0;
+  }
+
+  .wiki-content .diag-climat-barre-temp {
+    position: absolute;
+    left: 22%;
+    width: 56%;
+    background: linear-gradient(to top, #fb6a4a, #c0392b);
+    border-radius: 3px;
+    min-height: 2px;
+    z-index: 1;
+  }
+
+  .wiki-content .diag-climat-val-tmax,
+  .wiki-content .diag-climat-val-tmin,
+  .wiki-content .diag-climat-val-prec {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.72em;
+    line-height: 1;
+    white-space: nowrap;
+    z-index: 2;
+  }
+
+  .wiki-content .diag-climat-val-tmax {
+    color: var(--wiki-diag-tmax);
+    font-weight: 700;
+  }
+
+  .wiki-content .diag-climat-val-tmin {
+    color: var(--wiki-diag-tmin);
+    font-weight: 700;
+  }
+
+  .wiki-content .diag-climat-val-prec {
+    bottom: -1.2em;
+    color: var(--wiki-diag-muted);
+  }
+
+  .wiki-content .diag-climat-label {
+    margin-top: 1.4em;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--wiki-diag-label);
+    line-height: 1;
+  }
+
+  .wiki-content .diag-climat-label abbr {
+    text-decoration: none;
+    border-bottom: none;
+  }
+
+  .wiki-content .diag-climat-legende {
+    text-align: center;
+    margin-top: 0.3em;
+    padding-top: 0.3em;
+    border-top: 1px solid var(--wiki-diag-leg-border);
+    font-size: 0.82em;
+    color: var(--wiki-diag-muted);
+  }
+
+  .wiki-content .diag-climat-leg-tmax {
+    color: #ef3b2c;
+  }
+
+  .wiki-content .diag-climat-leg-tmin {
+    color: #00838f;
+  }
+
+  .wiki-content .diag-climat-leg-prec {
+    color: #0097a7;
+  }
+
+  /* Blockquotes */
+  .wiki-content blockquote {
+    @apply pl-6 border-l-[3px] border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 italic my-10 text-lg leading-relaxed tracking-tight;
+  }
+
+  /* References & Citations */
+  .wiki-content .reference {
+    @apply text-[10px] align-super ml-0.5 text-zinc-400 dark:text-zinc-600 no-underline hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-mono;
+  }
+  
+  .wiki-content .reference a {
+    @apply no-underline text-inherit;
+  }
+
+  .wiki-content .reflist {
+    @apply text-[13px] mt-16 pt-8 border-t border-zinc-100 dark:border-zinc-800/50 columns-1 sm:columns-2 gap-8 text-zinc-500 dark:text-zinc-500;
+  }
+
+  .wiki-content .reflist li {
+    @apply mb-3 break-inside-avoid;
   }
 }
 
+:root {
+  --background: #ffffff;
+  --background-rgb: 255, 255, 255;
+  --foreground: #18181b;
+  --foreground-rgb: 24, 24, 27;
+  --scroll-hint-rgb: 255, 255, 255;
+  --wiki-table-wrap-bg: rgba(255, 255, 255, 0.95);
+  --wiki-table-wrap-border: rgba(228, 228, 231, 0.7);
+  --wiki-table-cell-bg: transparent;
+  --wiki-table-head-bg: rgba(244, 244, 245, 0.92);
+  --wiki-table-text: #27272a;
+  --wiki-table-head-text: #3f3f46;
+  --wiki-table-border: rgba(228, 228, 231, 0.8);
+  --wiki-infobox-text: #27272a;
+  --wiki-infobox-muted: #52525b;
+  --wiki-infobox-row-border: rgba(228, 228, 231, 0.9);
+  --wiki-diag-bg: #f8f9fa;
+  --wiki-diag-text: #202122;
+  --wiki-diag-border: #c8ccd1;
+  --wiki-diag-separator: #aaaaaa;
+  --wiki-diag-muted: #555555;
+  --wiki-diag-label: #333333;
+  --wiki-diag-leg-border: #dddddd;
+  --wiki-diag-tmax: #c0392b;
+  --wiki-diag-tmin: #00838f;
+}
+
+/* Classic Dark Mode */
+[data-theme="dark"] {
+  --background: #09090b; /* zinc-950 */
+  --background-rgb: 9, 9, 11;
+  --foreground: #fafafa; /* zinc-50 */
+  --foreground-rgb: 250, 250, 250;
+  --scroll-hint-rgb: 9, 9, 11;
+  --wiki-table-wrap-bg: rgba(20, 20, 24, 0.8);
+  --wiki-table-wrap-border: rgba(63, 63, 70, 0.7);
+  --wiki-table-cell-bg: rgba(12, 12, 16, 0.7);
+  --wiki-table-head-bg: rgba(30, 30, 36, 0.88);
+  --wiki-table-text: #d4d4d8;
+  --wiki-table-head-text: #e4e4e7;
+  --wiki-table-border: rgba(63, 63, 70, 0.72);
+  --wiki-infobox-text: #e4e4e7;
+  --wiki-infobox-muted: #a1a1aa;
+  --wiki-infobox-row-border: rgba(63, 63, 70, 0.72);
+  --wiki-diag-bg: #111827;
+  --wiki-diag-text: #e5e7eb;
+  --wiki-diag-border: #334155;
+  --wiki-diag-separator: #475569;
+  --wiki-diag-muted: #94a3b8;
+  --wiki-diag-label: #cbd5e1;
+  --wiki-diag-leg-border: #334155;
+}
+
+/* Warm / Sepia Mode for easy reading */
+[data-theme="sepia"] {
+  --background: #f6eedc; /* Kindle Luxe paper */
+  --background-rgb: 246, 238, 220;
+  --foreground: #3f2f22; /* Ink brown */
+  --foreground-rgb: 63, 47, 34;
+  --scroll-hint-rgb: 246, 238, 220;
+  --wiki-table-wrap-bg: rgba(243, 232, 212, 0.95);
+  --wiki-table-wrap-border: rgba(198, 168, 130, 0.62);
+  --wiki-table-cell-bg: transparent;
+  --wiki-table-head-bg: rgba(232, 214, 188, 0.8);
+  --wiki-table-text: #3f2f22;
+  --wiki-table-head-text: #5c432e;
+  --wiki-table-border: rgba(198, 168, 130, 0.52);
+  --wiki-infobox-text: #3f2f22;
+  --wiki-infobox-muted: #6b543f;
+  --wiki-infobox-row-border: rgba(198, 168, 130, 0.55);
+  --wiki-diag-bg: #f5ead6;
+  --wiki-diag-text: #3f2f22;
+  --wiki-diag-border: #c8aa82;
+  --wiki-diag-separator: #b8956a;
+  --wiki-diag-muted: #7c634c;
+  --wiki-diag-label: #5c432e;
+  --wiki-diag-leg-border: #d8bf9f;
+}
+
+[data-theme="sepia"] .wiki-content {
+  color: #5b4836;
+}
+[data-theme="sepia"] .wiki-content h1, [data-theme="sepia"] .wiki-content h2, [data-theme="sepia"] .wiki-content h3 {
+  color: #33251a;
+  border-color: #ddc6a3;
+}
+[data-theme="sepia"] .wiki-content a {
+  color: #8a5a2e;
+  text-decoration-color: #c6a882;
+}
+[data-theme="sepia"] .wiki-infobox table {
+  background-color: rgba(239, 227, 204, 0.85);
+  border-color: rgba(198, 168, 130, 0.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 8px 24px rgba(90,64,34,0.08);
+}
+
+/* Warm up common UI surfaces for Sepia mode */
+[data-theme="sepia"] .bg-zinc-50,
+[data-theme="sepia"] .bg-zinc-100,
+[data-theme="sepia"] .bg-zinc-100\/80,
+[data-theme="sepia"] .bg-white,
+[data-theme="sepia"] .bg-white\/50,
+[data-theme="sepia"] .bg-white\/60,
+[data-theme="sepia"] .bg-white\/70 {
+  background-color: rgba(239, 227, 204, 0.92) !important;
+}
+
+[data-theme="sepia"] .border-zinc-100,
+[data-theme="sepia"] .border-zinc-200,
+[data-theme="sepia"] .border-zinc-100\/50,
+[data-theme="sepia"] .border-zinc-200\/50 {
+  border-color: rgba(198, 168, 130, 0.55) !important;
+}
+
+[data-theme="sepia"] .text-zinc-900,
+[data-theme="sepia"] .text-zinc-800,
+[data-theme="sepia"] .text-zinc-700 {
+  color: #3f2f22 !important;
+}
+
+[data-theme="sepia"] .text-zinc-600,
+[data-theme="sepia"] .text-zinc-500,
+[data-theme="sepia"] .text-zinc-400 {
+  color: #6b543f !important;
+}
+
+[data-theme="sepia"] header {
+  backdrop-filter: blur(14px);
+}
+
+/* Dim / Cool Blue Mode for night reading without harsh contrast */
+[data-theme="dim"] {
+  --background: #111827; /* Tokyo Night base */
+  --background-rgb: 17, 24, 39;
+  --foreground: #e5e7eb; /* soft white */
+  --foreground-rgb: 229, 231, 235;
+  --scroll-hint-rgb: 17, 24, 39;
+  --wiki-table-wrap-bg: rgba(17, 24, 39, 0.78);
+  --wiki-table-wrap-border: rgba(71, 85, 105, 0.65);
+  --wiki-table-cell-bg: rgba(15, 23, 42, 0.65);
+  --wiki-table-head-bg: rgba(30, 41, 59, 0.85);
+  --wiki-table-text: #dbe3ef;
+  --wiki-table-head-text: #e2e8f0;
+  --wiki-table-border: rgba(71, 85, 105, 0.62);
+  --wiki-infobox-text: #dbe3ef;
+  --wiki-infobox-muted: #9fb3cc;
+  --wiki-infobox-row-border: rgba(71, 85, 105, 0.64);
+  --wiki-diag-bg: #182235;
+  --wiki-diag-text: #dbe3ef;
+  --wiki-diag-border: #3a4a63;
+  --wiki-diag-separator: #536b8e;
+  --wiki-diag-muted: #a4b6cf;
+  --wiki-diag-label: #dbe3ef;
+  --wiki-diag-leg-border: #3a4a63;
+}
+
+[data-theme="dim"] .wiki-content {
+  color: #cbd5e1; /* slate-300 */
+}
+[data-theme="dim"] .wiki-content h1, [data-theme="dim"] .wiki-content h2, [data-theme="dim"] .wiki-content h3 {
+  color: #f3f4f6; /* gray-100 */
+  border-color: #374151; /* gray-700 */
+}
+[data-theme="dim"] .wiki-content a {
+  color: #7dd3fc; /* sky-300 */
+  text-decoration-color: #334155; /* slate-700 */
+}
+[data-theme="dim"] .wiki-infobox table {
+  background-color: rgba(31, 41, 55, 0.7);
+  border-color: rgba(71, 85, 105, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 10px 28px rgba(2,6,23,0.45);
+}
+
+[data-theme="dim"] [class*="dark:bg-zinc-950"],
+[data-theme="dim"] [class*="dark:bg-zinc-900"],
+[data-theme="dim"] [class*="dark:bg-zinc-900/"],
+[data-theme="dim"] [class*="dark:bg-zinc-950/"] {
+  background-color: rgba(31, 41, 55, 0.82) !important;
+}
+
+[data-theme="dim"] [class*="dark:border-zinc-800"],
+[data-theme="dim"] [class*="dark:ring-zinc-800"] {
+  border-color: rgba(71, 85, 105, 0.6) !important;
+  --tw-ring-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+[data-theme="dim"] [class*="dark:text-zinc-100"],
+[data-theme="dim"] [class*="dark:text-zinc-200"],
+[data-theme="dim"] [class*="dark:text-zinc-300"] {
+  color: #e5e7eb !important;
+}
+
+[data-theme="dim"] [class*="dark:text-zinc-400"],
+[data-theme="dim"] [class*="dark:text-zinc-500"] {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dim"] a {
+  color: #7dd3fc;
+}
+
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.scroll-hint-fade {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-top: 0 !important;
+  box-shadow: none !important;
+  outline: 0;
+}
+
+.scroll-hint-fade--page {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8.75rem;
+  z-index: 70;
+  background: linear-gradient(
+    to top,
+    rgba(var(--scroll-hint-rgb), 0.98) 0%,
+    rgba(var(--scroll-hint-rgb), 0.82) 34%,
+    rgba(var(--scroll-hint-rgb), 0.45) 68%,
+    rgba(var(--scroll-hint-rgb), 0) 100%
+  );
+}
+
+.scroll-hint-fade--box {
+  height: 4.25rem;
+  border-bottom-left-radius: 1.5rem;
+  border-bottom-right-radius: 1.5rem;
+  z-index: 30;
+  background: linear-gradient(
+    to top,
+    rgba(var(--scroll-hint-rgb), 0.97) 0%,
+    rgba(var(--scroll-hint-rgb), 0.7) 42%,
+    rgba(var(--scroll-hint-rgb), 0) 100%
+  );
 }
