@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "maps.wikimedia.org",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "**.wikipedia.org",
         pathname: "/**",
       },
