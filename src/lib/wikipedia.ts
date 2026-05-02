@@ -492,7 +492,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function appendStyle($el: cheerio.Cheerio<any>, style: string) {
+function appendStyle($el: cheerio.Cheerio<cheerio.Element>, style: string) {
   const current = ($el.attr("style") ?? "").trim();
   const suffix = current && !current.endsWith(";") ? ";" : "";
   $el.attr("style", `${current}${suffix}${style}`);
