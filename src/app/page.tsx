@@ -1,8 +1,8 @@
 "use client";
 
 import { Header } from "@/components/Header";
-import { Search } from "lucide-react";
 import { BackgroundBeams } from "@/components/BackgroundBeams";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { useState } from "react";
 import { DEFAULT_WIKI_LANGUAGE, readPreferredWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 
@@ -76,28 +76,12 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Large Search Bar for Home */}
-          <form action="/wiki/search" method="GET" className="relative max-w-2xl mx-auto w-full group">
-            <div className="relative flex items-center transition-transform duration-300 group-focus-within:-translate-y-1">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
-              <div className="relative flex items-center w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm ring-1 ring-zinc-200/50 dark:ring-zinc-800/50 overflow-hidden">
-                <Search className="absolute left-5 w-6 h-6 text-zinc-400" />
-                <input type="hidden" name="lang" value={lang} />
-                <input
-                  type="text"
-                  name="q"
-                  required
-                  placeholder={uiCopy.searchPlaceholder}
-                  className="w-full pl-14 pr-6 py-5 bg-transparent outline-none text-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
-                  autoComplete="off"
-                />
-                <div className="absolute right-3 hidden sm:flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded font-mono text-xs text-zinc-500 border border-zinc-200 dark:border-zinc-700">⌘</kbd>
-                  <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded font-mono text-xs text-zinc-500 border border-zinc-200 dark:border-zinc-700">K</kbd>
-                </div>
-              </div>
-            </div>
-          </form>
+          <SearchAutocomplete
+            language={lang}
+            placeholder={uiCopy.searchPlaceholder}
+            variant="home"
+            showShortcut
+          />
 
           <div className="pt-10 border-t border-zinc-200/50 dark:border-zinc-800/50 max-w-2xl mx-auto w-full">
             <p className="text-sm font-mono text-zinc-500 mb-6 uppercase tracking-widest">{uiCopy.trending}</p>

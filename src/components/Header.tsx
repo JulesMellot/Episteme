@@ -1,11 +1,12 @@
 "use client";
 
-import { Search, Moon, Sun, Coffee, Monitor } from "lucide-react";
+import { Moon, Sun, Coffee, Monitor } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 
 interface HeaderProps {
@@ -15,7 +16,6 @@ interface HeaderProps {
 }
 
 export function Header({ isHome = false, hideSearch = false, initialLanguage }: HeaderProps) {
-  const [query, setQuery] = useState("");
   const [lang, setLang] = useState(() => normalizeWikiLanguage(initialLanguage ?? DEFAULT_WIKI_LANGUAGE));
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -68,25 +68,12 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
         
         <div className="flex items-center space-x-4 flex-1 justify-end">
           {(!isHome && !hideSearch) && (
-            <form action="/wiki/search" method="GET" className="relative w-full max-w-md hidden sm:block group">
-              <div className="relative flex items-center">
-                <Search className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />
-                <input type="hidden" name="lang" value={lang} />
-                <input
-                  type="text"
-                  name="q"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  required
-                  placeholder={uiCopy.searchPlaceholder}
-                  className="w-full pl-9 pr-12 py-2 rounded-full bg-zinc-100/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800/50 focus:border-blue-500/50 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm placeholder:text-zinc-500"
-                />
-                <div className="absolute right-3 hidden sm:flex items-center gap-0.5 pointer-events-none">
-                  <kbd className="px-1.5 py-0.5 bg-zinc-200/50 dark:bg-zinc-800/50 rounded font-mono text-[10px] text-zinc-500">⌘</kbd>
-                  <kbd className="px-1.5 py-0.5 bg-zinc-200/50 dark:bg-zinc-800/50 rounded font-mono text-[10px] text-zinc-500">K</kbd>
-                </div>
-              </div>
-            </form>
+            <SearchAutocomplete
+              language={lang}
+              placeholder={uiCopy.searchPlaceholder}
+              variant="header"
+              showShortcut
+            />
           )}
 
           <LanguageSwitcher initialLanguage={lang} onLanguageChange={setLang} />

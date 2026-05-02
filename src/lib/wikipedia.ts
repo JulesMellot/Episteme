@@ -606,6 +606,193 @@ function appendStyle($el: cheerio.Cheerio<Element>, style: string) {
   $el.attr("style", `${current}${suffix}${style}`);
 }
 
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function cleanCollapsibleLabel(value: string) {
+  const cleaned = normalizeWhitespace(
+    value
+      .replace(/\[\s*(show|hide|expand|collapse)\s*\]/gi, "")
+      .replace(/\b(show|hide|expand|collapse)\b/gi, "")
+  );
+  return cleaned;
+}
+
+function getCollapsibleTitle($root: cheerio.Cheerio<Element>) {
+  const candidates = [
+    $root.children("caption").first(),
+    $root.find("> caption").first(),
+    $root.find("> tbody > tr:first-child > th").first(),
+    $root.find("> tr:first-child > th").first(),
+    $root.find("> .mw-collapsible-toggle").first(),
+    $root.find(".mw-collapsible-toggle").first(),
+    $root.find("> h2, > h3, > h4, > h5, > h6").first(),
+    $root.find("h2, h3, h4, h5, h6").first(),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate?.length) continue;
+    const clone = candidate.clone();
+    clone.find(".mw-collapsible-toggle").remove();
+    const text = cleanCollapsibleLabel(clone.text());
+    if (text && text.length >= 3) {
+      return text;
+    }
+  }
+
+  const ariaLabel = cleanCollapsibleLabel($root.attr("aria-label") ?? "");
+  if (ariaLabel) return ariaLabel;
+
+  return "Details";
+}
+
+function enhanceWikipediaGalleries($: cheerio.CheerioAPI) {
+  $(".gallery").each((_, gallery) => {
+    const $gallery = $(gallery);
+    $gallery.addClass("wiki-gallery");
+    $gallery.removeAttr("style");
+
+    $gallery.find(".gallerybox").each((__, item) => {
+      const $item = $(item);
+      $item.addClass("wiki-gallery-item");
+      $item.removeAttr("style");
+    });
+
+    $gallery.find(".thumb, .thumbinner").each((__, block) => {
+      const $block = $(block);
+      $block.addClass("wiki-gallery-thumb");
+      $block.removeAttr("style");
+    });
+
+    $gallery.find(".gallerytext").each((__, caption) => {
+      $(caption).addClass("wiki-gallery-caption");
+    });
+
+    $gallery.find("li").each((__, item) => {
+      $(item).removeAttr("style");
+    });
+
+    $gallery.find("img").each((__, img) => {
+      $(img).addClass("wiki-gallery-image");
+    });
+  });
+}
+
+function enhanceCollapsibles($: cheerio.CheerioAPI) {
+  $(".mw-collapsible").each((_, root) => {
+    const $root = $(root);
+    if ($root.closest(".wiki-collapsible").length > 0) return;
+
+    const isCollapsed = $root.hasClass("mw-collapsed");
+    const title = getCollapsibleTitle($root);
+    const openAttr = isCollapsed ? "" : " open";
+
+    if ($root.is("table")) {
+      const $table = $root.clone();
+      $table.removeClass("mw-collapsible mw-collapsed");
+      $table.find(".mw-collapsible-toggle").remove();
+
+      const markup = `<details class="wiki-collapsible wiki-collapsible--table"${openAttr}>
+        <summary class="wiki-collapsible__summary">${escapeHtml(title)}</summary>
+        <div class="wiki-collapsible__body">${$.html($table)}</div>
+      </details>`;
+      $root.replaceWith(markup);
+      return;
+    }
+
+    const $content = $root.clone();
+    $content.removeClass("mw-collapsible mw-collapsed");
+    $content.find(".mw-collapsible-toggle").remove();
+
+    const innerHtml = ($content.html() ?? "").trim();
+    if (!innerHtml) return;
+
+    const markup = `<details class="wiki-collapsible"${openAttr}>
+      <summary class="wiki-collapsible__summary">${escapeHtml(title)}</summary>
+      <div class="wiki-collapsible__body">${innerHtml}</div>
+    </details>`;
+    $root.replaceWith(markup);
+  });
+}
+
+function ensureComplexModuleFallback(
+  $el: cheerio.Cheerio<Element>,
+  message: string,
+  $: cheerio.CheerioAPI
+) {
+  const hasVisibleContent =
+    $el.find("img, svg, canvas, table, pre, code, audio, video").length > 0 ||
+    normalizeWhitespace($el.text()).length > 0;
+
+  if (hasVisibleContent) return;
+
+  $el.empty().append(
+    $(
+      `<p class="wiki-module__fallback">${escapeHtml(message)}</p>`
+    )
+  );
+}
+
+function enhanceComplexModules($: cheerio.CheerioAPI) {
+  $(".mw-highlight, pre.sourceCode, div.sourceCode").each((_, block) => {
+    const $block = $(block);
+    $block.addClass("wiki-module wiki-module--code");
+    $block.find("pre").addClass("wiki-code-block");
+    $block.find("code").addClass("wiki-inline-code");
+  });
+
+  $(".timeline-wrapper, .timeline").each((_, block) => {
+    const $block = $(block);
+    $block.addClass("wiki-module wiki-module--timeline");
+    ensureComplexModuleFallback($block, "Timeline preview unavailable in this reader.", $);
+  });
+
+  $(".mw-ext-score, .score").each((_, block) => {
+    const $block = $(block);
+    $block.addClass("wiki-module wiki-module--score");
+    ensureComplexModuleFallback($block, "Score preview unavailable in this reader.", $);
+  });
+
+  $(".mw-graph, .chart, .graph-container, .vega-embed").each((_, block) => {
+    const $block = $(block);
+    $block.addClass("wiki-module wiki-module--chart");
+    ensureComplexModuleFallback($block, "Interactive chart unavailable in this reader.", $);
+  });
+
+  $(".chemf, .chem2-inline, .chem2-su, .chem2-sub").each((_, block) => {
+    $(block).addClass("wiki-module wiki-module--chem");
+  });
+}
+
+function enhanceMediaElements($: cheerio.CheerioAPI) {
+  $("audio, video").each((_, media) => {
+    const $media = $(media);
+    $media.addClass("wiki-inline-media");
+
+    if (!$media.attr("controls")) {
+      $media.attr("controls", "");
+    }
+    if (!$media.attr("preload")) {
+      $media.attr("preload", "metadata");
+    }
+    if ($media.is("video") && !$media.attr("playsinline")) {
+      $media.attr("playsinline", "");
+    }
+
+    const $card = $media
+      .closest("figure, .thumb, .thumbinner, .audio-container, .video-container, .mw-tmh-player")
+      .first();
+    if ($card.length > 0) {
+      $card.addClass("wiki-media-card");
+    }
+  });
+
+  $(".mw-tmh-player, .thumb .video-container, .thumb .audio-container").each((_, block) => {
+    $(block).addClass("wiki-media-card");
+  });
+}
+
 function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
   const $ = cheerio.load(rawHtml);
 
@@ -615,6 +802,11 @@ function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
   
   // Aggressively remove Wikipedia-specific sidebars, navboxes, and empty elements that break the UX
   $('.navbox, .vertical-navbox, table.sidebar, .sistersitebox, .mw-empty-elt').remove();
+
+  enhanceWikipediaGalleries($);
+  enhanceCollapsibles($);
+  enhanceComplexModules($);
+  enhanceMediaElements($);
 
   // Extract TOC
   const toc: TocItem[] = [];

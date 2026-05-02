@@ -67,6 +67,31 @@
   .wiki-content ul li {
     @apply text-zinc-600 dark:text-zinc-400;
   }
+
+  .wiki-content .wiki-gallery {
+    @apply grid gap-5 my-10 pl-0 ml-0;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    list-style: none;
+  }
+
+  .wiki-content .wiki-gallery > li,
+  .wiki-content .wiki-gallery .wiki-gallery-item {
+    @apply m-0 list-none rounded-3xl overflow-hidden bg-white/70 dark:bg-zinc-900/50 ring-1 ring-zinc-200/60 dark:ring-zinc-800/60 shadow-[0_10px_30px_rgba(0,0,0,0.05)];
+  }
+
+  .wiki-content .wiki-gallery-thumb {
+    @apply flex flex-col w-full h-full;
+  }
+
+  .wiki-content .wiki-gallery .wiki-gallery-image {
+    @apply block w-full h-auto max-h-[280px] object-contain bg-zinc-50 dark:bg-zinc-950/50 rounded-none;
+    margin: 0 !important;
+  }
+
+  .wiki-content .wiki-gallery-caption,
+  .wiki-content .wiki-gallery .gallerytext {
+    @apply px-4 py-3 text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400;
+  }
   
   /* Content Infoboxes (if any remain in text) and Main Right Infobox */
   .wiki-content table.infobox {
@@ -75,7 +100,7 @@
 
   /* Dedicated Right Sidebar Infobox */
   .wiki-infobox table {
-    @apply w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_8px_30px_rgba(0,0,0,0.2)] rounded-3xl p-1 overflow-hidden text-[13px] font-sans text-zinc-600 dark:text-zinc-400 ring-1 ring-zinc-200/50 dark:ring-zinc-800/50;
+    @apply w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_8px_30px_rgba(0,0,0,0.2)] rounded-md p-1 overflow-hidden text-[13px] font-sans text-zinc-600 dark:text-zinc-400 ring-1 ring-zinc-200/50 dark:ring-zinc-800/50;
   }
   
   .wiki-infobox tbody {
@@ -106,13 +131,20 @@
   .wiki-infobox th {
     color: var(--wiki-infobox-muted) !important;
   }
+
+  .wiki-infobox figure,
+  .wiki-infobox audio,
+  .wiki-infobox video,
+  .wiki-infobox iframe {
+    border-radius: 0 !important;
+  }
   
   .wiki-infobox .bento-image-grid {
-    @apply mb-5 w-full bg-zinc-50 dark:bg-zinc-900/30 p-1.5 rounded-[1rem] border border-zinc-100 dark:border-zinc-800/50;
+    @apply mb-5 w-full bg-zinc-50 dark:bg-zinc-900/30 p-1.5 rounded-md border border-zinc-100 dark:border-zinc-800/50;
   }
   
   .wiki-infobox .bento-image-grid > div {
-    @apply rounded-[0.6rem] overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none;
+    @apply rounded-sm overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none;
   }
 
   .wiki-infobox .bento-image-grid img {
@@ -122,7 +154,7 @@
   }
   
   .wiki-infobox .infobox-image {
-    @apply block w-full mb-6 text-center overflow-hidden rounded-[1rem] bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50;
+    @apply block w-full mb-6 text-center overflow-hidden rounded-md bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50;
   }
 
   .wiki-infobox .infobox-image tr {
@@ -130,7 +162,7 @@
   }
 
   .wiki-infobox .infobox-image img {
-    @apply max-w-full h-auto rounded-xl object-contain;
+    @apply max-w-full h-auto rounded-sm object-contain;
     width: auto !important;
   }
 
@@ -197,6 +229,48 @@
   .wiki-content figcaption {
     @apply mt-4 text-zinc-500 dark:text-zinc-400 text-[13px] leading-relaxed text-center px-4 font-mono w-full;
   }
+
+  .wiki-content .wiki-collapsible {
+    @apply my-8 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/60 dark:bg-zinc-900/35 overflow-hidden;
+  }
+
+  .wiki-content .wiki-collapsible[open] {
+    @apply shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.2)];
+  }
+
+  .wiki-content .wiki-collapsible__summary {
+    @apply list-none cursor-pointer select-none px-5 py-4 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center justify-between gap-4;
+  }
+
+  .wiki-content .wiki-collapsible__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .wiki-content .wiki-collapsible__summary::after {
+    content: "+";
+    @apply text-lg leading-none text-zinc-400 dark:text-zinc-500 transition-transform duration-200;
+  }
+
+  .wiki-content .wiki-collapsible[open] > .wiki-collapsible__summary::after {
+    transform: rotate(45deg);
+  }
+
+  .wiki-content .wiki-collapsible__body {
+    @apply px-5 pb-5 pt-1;
+  }
+
+  .wiki-content .wiki-collapsible__body > :first-child {
+    @apply mt-0;
+  }
+
+  .wiki-content .wiki-collapsible__body > :last-child {
+    @apply mb-0;
+  }
+
+  .wiki-content .wiki-collapsible__body > .wiki-table-wrap,
+  .wiki-content .wiki-collapsible__body > table {
+    @apply mt-2 mb-0;
+  }
   
   /* OVERRIDE INLINE STYLES: Wikipedia injects hardcoded width/height directly onto elements */
   .wiki-content .thumbinner > a {
@@ -233,6 +307,53 @@
   .wiki-content img.wiki-media-small {
     width: auto !important;
     max-width: 100%;
+  }
+
+  .wiki-content .wiki-media-card,
+  .wiki-infobox .wiki-media-card {
+    @apply my-8 rounded-3xl overflow-hidden bg-black/5 dark:bg-white/5 ring-1 ring-zinc-200/60 dark:ring-zinc-800/60;
+  }
+
+  .wiki-infobox .wiki-media-card {
+    @apply my-2 rounded-none;
+  }
+
+  .wiki-content .wiki-inline-media,
+  .wiki-infobox .wiki-inline-media {
+    @apply block w-full max-w-full rounded-2xl bg-zinc-950;
+  }
+
+  .wiki-infobox .wiki-inline-media {
+    border-radius: 0 !important;
+  }
+
+  .wiki-content audio.wiki-inline-media,
+  .wiki-infobox audio.wiki-inline-media {
+    min-height: 54px;
+  }
+
+  .wiki-content video.wiki-inline-media,
+  .wiki-infobox video.wiki-inline-media {
+    max-height: min(70vh, 720px);
+  }
+
+  .wiki-infobox .wiki-inline-media {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .wiki-infobox figure.wiki-media-card,
+  .wiki-infobox .mw-default-audio-height {
+    margin: 0.5rem 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    float: none !important;
+  }
+
+  .wiki-infobox .mw-default-audio-height > span,
+  .wiki-infobox figure.wiki-media-card > span {
+    display: block;
+    width: 100%;
   }
 
   /* Math formulas (Wikipedia Math extension): inline + block rendering */
@@ -463,6 +584,49 @@
     color: #0097a7;
   }
 
+  .wiki-content .wiki-module {
+    @apply my-8 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/70 dark:bg-zinc-900/35 overflow-hidden;
+  }
+
+  .wiki-content .wiki-module--code {
+    @apply bg-zinc-950 text-zinc-100 border-zinc-900;
+  }
+
+  .wiki-content .wiki-module--code pre,
+  .wiki-content .wiki-code-block,
+  .wiki-content .mw-highlight pre {
+    @apply m-0 p-4 text-[13px] leading-relaxed overflow-x-auto;
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  .wiki-content .wiki-module--code code,
+  .wiki-content .wiki-inline-code,
+  .wiki-content .mw-highlight code {
+    font-family: var(--font-mono);
+  }
+
+  .wiki-content .wiki-module--timeline,
+  .wiki-content .wiki-module--score,
+  .wiki-content .wiki-module--chart {
+    @apply p-4;
+  }
+
+  .wiki-content .wiki-module--timeline img,
+  .wiki-content .wiki-module--score img,
+  .wiki-content .wiki-module--chart img,
+  .wiki-content .wiki-module--chart svg {
+    @apply block max-w-full h-auto mx-auto;
+  }
+
+  .wiki-content .wiki-module--chem {
+    @apply inline-flex items-center rounded-lg px-2 py-1 text-[0.95em] bg-zinc-100/80 dark:bg-zinc-800/70 text-zinc-800 dark:text-zinc-100;
+  }
+
+  .wiki-content .wiki-module__fallback {
+    @apply m-0 px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400;
+  }
+
   /* Blockquotes */
   .wiki-content blockquote {
     @apply pl-6 border-l-[3px] border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 italic my-10 text-lg leading-relaxed tracking-tight;
@@ -470,19 +634,112 @@
 
   /* References & Citations */
   .wiki-content .reference {
-    @apply text-[10px] align-super ml-0.5 text-zinc-400 dark:text-zinc-600 no-underline hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors font-mono;
+    @apply text-[10px] align-super ml-0.5;
   }
-  
-  .wiki-content .reference a {
+
+  .wiki-content .reference a,
+  .wiki-content a.is-reference-origin {
+    @apply inline no-underline font-mono text-[0.66rem] leading-none text-zinc-400 dark:text-zinc-500 bg-transparent ring-0 transition-all duration-200;
+    transform: translateY(-0.08em);
+    letter-spacing: -0.01em;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .wiki-content .reference a:hover,
+  .wiki-content .reference a:focus-visible,
+  .wiki-content a.is-reference-origin {
+    @apply text-zinc-700 dark:text-zinc-200;
+    outline: none;
+    transform: translateY(-0.08em);
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .wiki-content .reference a .cite-bracket,
+  .wiki-content a.is-reference-origin .cite-bracket {
+    @apply opacity-45 transition-opacity duration-200;
+  }
+
+  .wiki-content .reference a:hover .cite-bracket,
+  .wiki-content .reference a:focus-visible .cite-bracket,
+  .wiki-content a.is-reference-origin .cite-bracket {
+    @apply opacity-70;
+  }
+
+  .wiki-content .mw-references-wrap,
+  .wiki-content .references-small,
+  .wiki-content .reflist {
+    @apply mt-16 pt-8 border-t border-zinc-100 dark:border-zinc-800/50;
+  }
+
+  .wiki-content .mw-references.references,
+  .wiki-content .reflist {
+    @apply m-0 grid gap-3 pl-0 text-[13px] text-zinc-600 dark:text-zinc-400;
+    list-style: none;
+  }
+
+  .wiki-content .mw-references.references li,
+  .wiki-content .reflist li {
+    @apply m-0 list-none rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/70 dark:bg-zinc-900/35 px-4 py-3 transition-colors duration-200;
+  }
+
+  .wiki-content .mw-references.references li.is-reference-target,
+  .wiki-content .reflist li.is-reference-target {
+    @apply border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-900;
+    box-shadow: 0 0 0 1px rgba(24, 24, 27, 0.12);
+    scroll-margin-top: 8rem;
+  }
+
+  .wiki-content .mw-cite-backlink {
+    @apply inline-flex items-center mr-2 text-zinc-400 dark:text-zinc-500;
+  }
+
+  .wiki-content .mw-cite-backlink a {
     @apply no-underline text-inherit;
   }
 
-  .wiki-content .reflist {
-    @apply text-[13px] mt-16 pt-8 border-t border-zinc-100 dark:border-zinc-800/50 columns-1 sm:columns-2 gap-8 text-zinc-500 dark:text-zinc-500;
+  .wiki-content .mw-reference-text,
+  .wiki-content .reference-text {
+    @apply text-zinc-600 dark:text-zinc-300 leading-relaxed;
   }
 
-  .wiki-content .reflist li {
-    @apply mb-3 break-inside-avoid;
+  .wiki-content .mw-reference-text a,
+  .wiki-content .reference-text a {
+    @apply underline underline-offset-2 decoration-zinc-200 dark:decoration-zinc-700;
+  }
+
+  .wiki-reference-preview {
+    position: fixed;
+    z-index: 90;
+    pointer-events: auto;
+    @apply rounded-xl border border-zinc-200/60 dark:border-zinc-800/70 bg-white/98 dark:bg-zinc-950/98 px-3.5 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.10)];
+  }
+
+  .wiki-reference-preview__text {
+    @apply text-[12.5px] leading-[1.65] text-zinc-600 dark:text-zinc-300;
+    max-height: min(40vh, 320px);
+    overflow: auto;
+    scrollbar-width: thin;
+  }
+
+  .wiki-reference-preview__text a {
+    @apply text-zinc-800 dark:text-zinc-100 underline underline-offset-2 decoration-zinc-200 dark:decoration-zinc-700;
+  }
+
+  .wiki-reference-preview__text a:hover,
+  .wiki-reference-preview__text a:focus-visible {
+    @apply text-zinc-950 dark:text-zinc-50 decoration-zinc-500 dark:decoration-zinc-400;
+    outline: none;
+  }
+
+  .wiki-reference-preview__text i,
+  .wiki-reference-preview__text cite {
+    @apply italic;
+  }
+
+  .wiki-reference-preview__text .external {
+    word-break: break-word;
   }
 }
 

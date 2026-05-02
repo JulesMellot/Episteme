@@ -8,6 +8,7 @@ import Image from "next/image";
 import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
 import { cookies } from "next/headers";
 import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
+import { WikiArticleContent } from "@/components/WikiArticleContent";
 
 interface PageProps {
   params: Promise<{
@@ -163,24 +164,21 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
         <Sidebar toc={page.toc} language={language} />
         
         {/* Middle Column: Main Content */}
-        <article className="flex-1 min-w-0 w-full max-w-[700px] xl:max-w-[760px] pb-32 order-1 lg:order-none">
+        <article className="flex-1 min-w-0 w-full max-w-[860px] xl:max-w-[940px] pb-32 order-1 lg:order-none">
           <header className="mb-14 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tighter leading-[1.1] mb-6">
               {page.title}
             </h1>
             
             {page.summary && (
-              <p className="text-lg text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6 max-w-[60ch] tracking-tight">
+              <p className="text-lg text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6 max-w-[70ch] tracking-tight">
                 {page.summary}
               </p>
             )}
             
           </header>
 
-          <div 
-            className="wiki-content relative w-full max-w-full"
-            dangerouslySetInnerHTML={{ __html: page.html }}
-          />
+          <WikiArticleContent html={page.html} language={language} />
 
           <WikiDonationCTAClient browserLanguage={language} />
         </article>
@@ -188,7 +186,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
         {/* Right Sidebar: Infobox */}
         {page.infoboxHtml && (
           <aside className="w-full lg:w-[320px] xl:w-[360px] shrink-0 order-first lg:order-last mb-12 lg:mb-0 lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)]">
-            <div className="relative h-full rounded-3xl overflow-hidden">
+            <div className="relative h-full rounded-md overflow-hidden">
               <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-hide pb-12">
                 <div 
                   className="wiki-infobox"

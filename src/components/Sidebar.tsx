@@ -38,8 +38,8 @@ export function Sidebar({ toc, language = "en" }: SidebarProps) {
   if (!toc || toc.length === 0) return null;
 
   return (
-    <aside className="w-72 flex-shrink-0 hidden xl:block pr-10">
-      <div className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-hide">
+    <aside className="hidden w-72 flex-shrink-0 self-start pr-10 xl:sticky xl:top-28 xl:block">
+      <div className="max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-hide">
         <div className="flex items-center gap-2 mb-6">
           <ListTree className="w-4 h-4 text-zinc-400" />
           <h4 className="font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">

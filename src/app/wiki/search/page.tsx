@@ -1,6 +1,7 @@
 import { Header } from "@/components/Header";
 import { searchWikipedia } from "@/lib/wikipedia";
-import { Search, ArrowRight, BookOpen, SearchX, Globe } from "lucide-react";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
+import { ArrowRight, BookOpen, SearchX, Globe } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
@@ -89,26 +90,15 @@ export default async function SearchPage({ searchParams }: PageProps) {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24 max-w-3xl">
         {/* Search Bar Section */}
         <div className="mb-16 sm:mb-20">
-          <form action="/wiki/search" method="GET" className="relative w-full group">
-            <div className="relative flex items-center">
-              <Search className="absolute left-6 w-5 h-5 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-zinc-100 transition-colors duration-300" />
-              <input type="hidden" name="lang" value={language} />
-              <input
-                type="text"
-                name="q"
-                defaultValue={trimmed}
-                placeholder={uiCopy.searchPlaceholder}
-                autoFocus={!trimmed}
-                className="w-full pl-16 pr-32 py-5 sm:py-6 rounded-[2rem] bg-white dark:bg-[#111111] border border-zinc-200/80 dark:border-zinc-800/80 focus:border-zinc-300 dark:focus:border-zinc-700 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-900/50 outline-none transition-all duration-300 text-lg sm:text-xl tracking-tight shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-              />
-              <button 
-                type="submit" 
-                className="absolute right-3 sm:right-4 px-6 py-3 sm:py-3.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-[1.5rem] text-sm sm:text-base font-semibold hover:bg-zinc-800 dark:hover:bg-white active:scale-[0.98] transition-all duration-200 shadow-sm"
-              >
-                {uiCopy.searchCta}
-              </button>
-            </div>
-          </form>
+          <SearchAutocomplete
+            key={`${language}:${trimmed}`}
+            language={language}
+            placeholder={uiCopy.searchPlaceholder}
+            defaultValue={trimmed}
+            autoFocus={!trimmed}
+            submitLabel={uiCopy.searchCta}
+            variant="page"
+          />
         </div>
 
         {/* Results or Empty States */}
