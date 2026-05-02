@@ -361,7 +361,7 @@ async function getPageUncached(slug: string, retries = DEFAULT_RETRIES, language
 
 const getCachedPage = unstable_cache(
   async (slug: string, language: string) => getPageUncached(slug, DEFAULT_RETRIES, language),
-  ["wikipedia-page-v6"],
+  ["wikipedia-page-v7"],
   {
     revalidate: ARTICLE_REVALIDATE_SECONDS,
     tags: ["wikipedia-page"],
@@ -635,69 +635,76 @@ function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
 
   // Extract Infobox BEFORE extracting the rest of the HTML
   let infoboxHtml: string | null = null;
-  const $infoboxTable = $("table.infobox").first();
-  const $infobox = $infoboxTable.length > 0 ? $infoboxTable : $(".infobox").first();
-  if ($infobox.length > 0) {
-    // ----------------------------------------------------
-    // Bento Box Generator for multiple hero images
-    // ----------------------------------------------------
-    const $rows = $infobox.find("tr");
-    let galleryRowIndex = -1;
-    let galleryImages: string[] = [];
+  const infoboxSelector = ".infobox, .taxobox";
+  const $topLevelInfoboxes = $(infoboxSelector).filter((_, el) => $(el).parents(infoboxSelector).length === 0);
+  if ($topLevelInfoboxes.length > 0) {
+    $topLevelInfoboxes.each((_, el) => {
+      const $infobox = $(el);
 
-    $rows.each((rowIndex, tr) => {
-      const $tr = $(tr);
-      if ($tr.find("th").length > 0) return;
+      // ----------------------------------------------------
+      // Bento Box Generator for multiple hero images
+      // ----------------------------------------------------
+      const $rows = $infobox.find("tr");
+      let galleryRowIndex = -1;
+      let galleryImages: string[] = [];
 
-      const $imgs = $tr
-        .find("img")
-        .filter((__, img) => parseInt($(img).attr("width") || "0", 10) >= 80);
+      $rows.each((rowIndex, tr) => {
+        const $tr = $(tr);
+        if ($tr.find("th").length > 0) return;
 
-      // Only transform true gallery rows (2+ images in the same row),
-      // so maps/flags single-image rows are left untouched.
-      if ($imgs.length >= 2) {
-        galleryImages = $imgs
-          .map((__, img) => $(img).attr("src") ?? "")
-          .get()
-          .filter(Boolean);
-        galleryRowIndex = rowIndex;
-        return false;
+        const $imgs = $tr
+          .find("img")
+          .filter((__, img) => parseInt($(img).attr("width") || "0", 10) >= 80);
+
+        // Only transform true gallery rows (2+ images in the same row),
+        // so maps/flags single-image rows are left untouched.
+        if ($imgs.length >= 2) {
+          galleryImages = $imgs
+            .map((__, img) => $(img).attr("src") ?? "")
+            .get()
+            .filter(Boolean);
+          galleryRowIndex = rowIndex;
+          return false;
+        }
+      });
+
+      if (galleryRowIndex >= 0 && galleryImages.length >= 2) {
+        const images = Array.from(new Set(galleryImages)).slice(0, 5);
+        let bentoHtml = "";
+
+        if (images.length === 2) {
+          bentoHtml = `<div class="bento-image-grid grid grid-cols-2 gap-1.5 aspect-[2/1]">
+            ${images.map((src) => `<div class="relative w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
+          </div>`;
+        } else if (images.length === 3) {
+          bentoHtml = `<div class="bento-image-grid grid grid-cols-2 grid-rows-2 gap-1.5 aspect-[4/3]">
+            <div class="relative col-span-1 row-span-2 w-full h-full overflow-hidden"><img src="${images[0]}" class="w-full h-full object-cover" /></div>
+            <div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${images[1]}" class="w-full h-full object-cover" /></div>
+            <div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${images[2]}" class="w-full h-full object-cover" /></div>
+          </div>`;
+        } else if (images.length === 4) {
+          bentoHtml = `<div class="bento-image-grid grid grid-cols-2 grid-rows-2 gap-1.5 aspect-square">
+            ${images.map((src) => `<div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
+          </div>`;
+        } else {
+          const top = images.slice(0, 2);
+          const bottom = images.slice(2, 5);
+          bentoHtml = `<div class="bento-image-grid grid grid-cols-6 grid-rows-2 gap-1.5 aspect-[4/3]">
+            ${top.map((src) => `<div class="relative col-span-3 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
+            ${bottom.map((src) => `<div class="relative col-span-2 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
+          </div>`;
+        }
+
+        $rows.eq(galleryRowIndex).replaceWith(`<tr><td colspan="2">${bentoHtml}</td></tr>`);
       }
+      // ----------------------------------------------------
     });
 
-    if (galleryRowIndex >= 0 && galleryImages.length >= 2) {
-      const images = Array.from(new Set(galleryImages)).slice(0, 5);
-      let bentoHtml = "";
-
-      if (images.length === 2) {
-        bentoHtml = `<div class="bento-image-grid grid grid-cols-2 gap-1.5 aspect-[2/1]">
-          ${images.map((src) => `<div class="relative w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
-        </div>`;
-      } else if (images.length === 3) {
-        bentoHtml = `<div class="bento-image-grid grid grid-cols-2 grid-rows-2 gap-1.5 aspect-[4/3]">
-          <div class="relative col-span-1 row-span-2 w-full h-full overflow-hidden"><img src="${images[0]}" class="w-full h-full object-cover" /></div>
-          <div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${images[1]}" class="w-full h-full object-cover" /></div>
-          <div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${images[2]}" class="w-full h-full object-cover" /></div>
-        </div>`;
-      } else if (images.length === 4) {
-        bentoHtml = `<div class="bento-image-grid grid grid-cols-2 grid-rows-2 gap-1.5 aspect-square">
-          ${images.map((src) => `<div class="relative col-span-1 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
-        </div>`;
-      } else {
-        const top = images.slice(0, 2);
-        const bottom = images.slice(2, 5);
-        bentoHtml = `<div class="bento-image-grid grid grid-cols-6 grid-rows-2 gap-1.5 aspect-[4/3]">
-          ${top.map((src) => `<div class="relative col-span-3 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
-          ${bottom.map((src) => `<div class="relative col-span-2 row-span-1 w-full h-full overflow-hidden"><img src="${src}" class="w-full h-full object-cover" /></div>`).join("")}
-        </div>`;
-      }
-
-      $rows.eq(galleryRowIndex).replaceWith(`<tr><td colspan="2">${bentoHtml}</td></tr>`);
-    }
-    // ----------------------------------------------------
-
-    infoboxHtml = $.html($infobox);
-    $infobox.remove();
+    infoboxHtml = $topLevelInfoboxes
+      .map((_, el) => $.html(el))
+      .get()
+      .join("");
+    $topLevelInfoboxes.remove();
   }
 
   // frwiki climate chart relies on TemplateStyles not included in REST HTML.
