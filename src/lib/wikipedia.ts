@@ -109,6 +109,27 @@ function normalizeSlug(slug: string) {
   return decodeURIComponent(slug).replace(/_/g, " ").trim();
 }
 
+function isWikimediaMapUrl(rawUrl: string) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return false;
+
+  const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+  try {
+    const parsed = new URL(absolute);
+    return parsed.hostname === "maps.wikimedia.org";
+  } catch {
+    return false;
+  }
+}
+
+function toMapProxyUrl(rawUrl: string) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  const absolute = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+  if (!isWikimediaMapUrl(absolute)) return null;
+  return `/api/wiki/image-proxy?url=${encodeURIComponent(absolute)}`;
+}
+
 function isFileSlug(slug: string) {
   return /^(file|image|fichier):/i.test(normalizeSlug(slug));
 }
@@ -665,10 +686,18 @@ function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
   // - keep small icons/logos at natural size
   // - render medium/large media full-width in layout
   // NOTE: do not rewrite Wikimedia thumbnail URLs; some target widths return 400.
+  // For Kartographer maps, drop Referer to satisfy maps.wikimedia.org anti-hotlink checks.
   $("img.mw-file-element").each((_, img) => {
     const $img = $(img);
     const cls = $img.attr("class") ?? "";
     if (cls.includes("mwe-math-fallback-image")) return;
+
+    const proxiedMapSrc = toMapProxyUrl($img.attr("src") ?? "");
+    if (proxiedMapSrc) {
+      $img.attr("src", proxiedMapSrc);
+      // Keep only one source so the browser never falls back to direct maps.wikimedia.org.
+      $img.removeAttr("srcset");
+    }
 
     const declaredWidth = parseInt($img.attr("width") ?? "0", 10);
     if (declaredWidth >= 180) {

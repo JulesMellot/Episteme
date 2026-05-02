@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const USER_AGENT =
+  process.env.WIKIPEDIA_USER_AGENT ??
+  "EpistemeReader/1.0 (+https://episteme.local)";
+
+function isAllowedRemoteUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    return (
+      url.hostname === "maps.wikimedia.org" ||
+      url.hostname.endsWith(".wikimedia.org") ||
+      url.hostname.endsWith(".wikipedia.org")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const remoteUrl = request.nextUrl.searchParams.get("url")?.trim();
+  if (!remoteUrl) {
+    return NextResponse.json(
+      { error: "Missing `url` parameter." },
+      { status: 400 }
+    );
+  }
+
+  if (!isAllowedRemoteUrl(remoteUrl)) {
+    return NextResponse.json({ error: "URL not allowed." }, { status: 400 });
+  }
+
+  const upstream = await fetch(remoteUrl, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      "Api-User-Agent": USER_AGENT,
+      Accept:
+        "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    },
+    next: {
+      revalidate: 60 * 60,
+      tags: ["wikimedia-image-proxy"],
+    },
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    return NextResponse.json(
+      { error: "Upstream image unavailable." },
+      { status: upstream.status || 502 }
+    );
+  }
+
+  const contentType =
+    upstream.headers.get("content-type") ?? "application/octet-stream";
+  const contentLength = upstream.headers.get("content-length");
+
+  const headers = new Headers();
+  headers.set("Content-Type", contentType);
+  headers.set(
+    "Cache-Control",
+    upstream.headers.get("cache-control") ??
+      "public, max-age=3600, stale-while-revalidate=86400"
+  );
+  if (contentLength) {
+    headers.set("Content-Length", contentLength);
+  }
+
+  return new NextResponse(upstream.body, {
+    status: 200,
+    headers,
+  });
+}
