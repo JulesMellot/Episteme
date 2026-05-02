@@ -1,6 +1,7 @@
 export const DEFAULT_WIKI_LANGUAGE = "en";
 export const WIKI_LANGUAGE_STORAGE_KEY = "episteme:wikipedia:lang";
 export const WIKI_LANGUAGE_COOKIE_NAME = "episteme_wikipedia_lang";
+export type UiLocale = "en" | "fr";
 
 export interface WikiLanguageOption {
   code: string;
@@ -23,6 +24,11 @@ export const POPULAR_WIKI_LANGUAGES: WikiLanguageOption[] = [
 export function normalizeWikiLanguage(lang?: string) {
   const candidate = (lang ?? "").trim().toLowerCase();
   return /^[a-z][a-z0-9-]{0,14}$/.test(candidate) ? candidate : DEFAULT_WIKI_LANGUAGE;
+}
+
+export function resolveUiLocale(lang?: string): UiLocale {
+  const normalized = normalizeWikiLanguage(lang);
+  return normalized.startsWith("fr") ? "fr" : "en";
 }
 
 export function readWikiLanguageCookie() {

@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { ArrowRight, FileText, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, readPreferredWikiLanguage } from "@/lib/wiki-language";
+import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, readPreferredWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 
 interface ParsedWikipediaInput {
   title: string;
@@ -88,6 +88,35 @@ export default function WikiFromFilePage() {
     if (typeof window === "undefined") return DEFAULT_WIKI_LANGUAGE;
     return readPreferredWikiLanguage();
   });
+  const uiLocale = resolveUiLocale(lang);
+  const uiCopy =
+    uiLocale === "fr"
+      ? {
+          fileTooLarge: "Le fichier est trop volumineux (max 1 Mo).",
+          title: "Ouvrir un article depuis un fichier",
+          subtitle:
+            "Uploade un fichier texte contenant un titre Wikipédia, ou une URL d’article, puis ouvre la page correspondante.",
+          chooseFile: "Choisir un fichier .txt",
+          example: "Ex: “React (software)” ou “https://fr.wikipedia.org/wiki/React_(software)”",
+          noFile: "Aucun fichier sélectionné",
+          placeholder: "Colle ici un titre ou une URL Wikipédia…",
+          parseError: "Impossible d’extraire un titre Wikipédia depuis ce contenu.",
+          openArticle: "Ouvrir l’article",
+          detectedTitle: "Titre détecté",
+        }
+      : {
+          fileTooLarge: "File is too large (max 1 MB).",
+          title: "Open an article from a file",
+          subtitle:
+            "Upload a text file containing a Wikipedia title or article URL, then open the corresponding page.",
+          chooseFile: "Choose a .txt file",
+          example: 'Example: "React (software)" or "https://fr.wikipedia.org/wiki/React_(software)"',
+          noFile: "No file selected",
+          placeholder: "Paste a Wikipedia title or URL here...",
+          parseError: "Unable to extract a Wikipedia title from this content.",
+          openArticle: "Open article",
+          detectedTitle: "Detected title",
+        };
 
   const inferredInput = useMemo(() => extractWikipediaInput(text, lang), [text, lang]);
 
@@ -101,7 +130,7 @@ export default function WikiFromFilePage() {
     setFileName(file.name);
 
     if (file.size > 1024 * 1024) {
-      setError("Le fichier est trop volumineux (max 1 Mo).");
+      setError(uiCopy.fileTooLarge);
       return;
     }
 
@@ -115,11 +144,10 @@ export default function WikiFromFilePage() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-14 max-w-[1000px]">
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
-            Ouvrir un article depuis un fichier
+            {uiCopy.title}
           </h1>
           <p className="mt-3 text-zinc-600 dark:text-zinc-400 max-w-[70ch]">
-            Uploade un fichier texte contenant un titre Wikipédia, ou une URL
-            d’article, puis ouvre la page correspondante.
+            {uiCopy.subtitle}
           </p>
         </div>
 
@@ -139,10 +167,10 @@ export default function WikiFromFilePage() {
             </div>
             <div>
               <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                Choisir un fichier .txt
+                {uiCopy.chooseFile}
               </div>
               <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Ex: “React (software)” ou “https://fr.wikipedia.org/wiki/React_(software)”
+                {uiCopy.example}
               </div>
             </div>
           </label>
@@ -150,7 +178,7 @@ export default function WikiFromFilePage() {
           <div className="mt-6 grid grid-cols-1 gap-4">
             <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <FileText className="w-4 h-4" />
-              <span>{fileName ? fileName : "Aucun fichier sélectionné"}</span>
+              <span>{fileName ? fileName : uiCopy.noFile}</span>
             </div>
 
             <textarea
@@ -160,7 +188,7 @@ export default function WikiFromFilePage() {
                 setFileName(null);
                 setText(e.target.value);
               }}
-              placeholder="Colle ici un titre ou une URL Wikipédia…"
+              placeholder={uiCopy.placeholder}
               className="w-full min-h-[160px] rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800/60 p-4 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 transition"
             />
 
@@ -175,20 +203,20 @@ export default function WikiFromFilePage() {
               disabled={!inferredInput}
               onClick={() => {
                 if (!inferredInput) {
-                  setError("Impossible d’extraire un titre Wikipédia depuis ce contenu.");
+                  setError(uiCopy.parseError);
                   return;
                 }
                 handleOpenArticle(inferredInput);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-              Ouvrir l’article
+              {uiCopy.openArticle}
               <ArrowRight className="w-4 h-4" />
             </button>
 
             {inferredInput && (
               <div className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
-                Titre détecté: {inferredInput.title} ({inferredInput.language})
+                {uiCopy.detectedTitle}: {inferredInput.title} ({inferredInput.language})
               </div>
             )}
           </div>

@@ -5,7 +5,7 @@ import { WikiMediaModal } from "@/components/WikiMediaModal";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Image from "next/image";
-import { normalizeWikiLanguage, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
+import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
 import { cookies } from "next/headers";
 import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
 
@@ -26,10 +26,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const language = normalizeWikiLanguage(
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
+  const uiLocale = resolveUiLocale(language);
   
   return {
     title: `${decodedSlug} (${language}) - Episteme`,
-    description: `Read about ${decodedSlug} from Wikipedia (${language}) on Episteme.`,
+    description:
+      uiLocale === "fr"
+        ? `Lire ${decodedSlug} sur Wikipédia (${language}) avec Episteme.`
+        : `Read about ${decodedSlug} from Wikipedia (${language}) on Episteme.`,
   };
 }
 
@@ -40,6 +44,25 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
   const language = normalizeWikiLanguage(
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
+  const uiLocale = resolveUiLocale(language);
+  const uiCopy =
+    uiLocale === "fr"
+      ? {
+          file: "Fichier",
+          type: "Type",
+          dimensions: "Dimensions",
+          source: "Source",
+          open: "Ouvrir",
+          license: "Licence",
+        }
+      : {
+          file: "File",
+          type: "Type",
+          dimensions: "Dimensions",
+          source: "Source",
+          open: "Open",
+          license: "License",
+        };
   const page = await getPage(slug, 2, language);
 
   if (!page) {
@@ -86,38 +109,38 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
                 </div>
               )}
 
-              <WikiDonationCTAClient />
+              <WikiDonationCTAClient browserLanguage={language} />
             </div>
 
             <aside className="w-full lg:sticky lg:top-28 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/40 p-6">
               <div className="text-xs font-mono text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                File
+                {uiCopy.file}
               </div>
               <div className="mt-4 space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-zinc-500 dark:text-zinc-400">Type</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{uiCopy.type}</span>
                   <span className="text-right font-mono">{page.mime ?? "—"}</span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-zinc-500 dark:text-zinc-400">Dimensions</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{uiCopy.dimensions}</span>
                   <span className="text-right font-mono">
                     {page.width && page.height ? `${page.width}×${page.height}` : "—"}
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-zinc-500 dark:text-zinc-400">Source</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{uiCopy.source}</span>
                   <a
                     href={page.fileUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-right font-mono text-zinc-900 dark:text-zinc-100 hover:underline"
                   >
-                    Open
+                    {uiCopy.open}
                   </a>
                 </div>
                 {page.licenseHtml && (
                   <div className="pt-3 border-t border-zinc-200/60 dark:border-zinc-800/60">
-                    <div className="text-zinc-500 dark:text-zinc-400 mb-1">License</div>
+                    <div className="text-zinc-500 dark:text-zinc-400 mb-1">{uiCopy.license}</div>
                     <div
                       className="font-mono text-sm text-zinc-900 dark:text-zinc-100"
                       dangerouslySetInnerHTML={{ __html: page.licenseHtml }}
@@ -137,7 +160,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
       <Header initialLanguage={language} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1600px] flex flex-col lg:flex-row items-start justify-center gap-8 lg:gap-12">
         {/* Left Sidebar: Table of Contents */}
-        <Sidebar toc={page.toc} />
+        <Sidebar toc={page.toc} language={language} />
         
         {/* Middle Column: Main Content */}
         <article className="flex-1 min-w-0 w-full max-w-[700px] xl:max-w-[760px] pb-32 order-1 lg:order-none">
@@ -159,7 +182,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
             dangerouslySetInnerHTML={{ __html: page.html }}
           />
 
-          <WikiDonationCTAClient />
+          <WikiDonationCTAClient browserLanguage={language} />
         </article>
 
         {/* Right Sidebar: Infobox */}

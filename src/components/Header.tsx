@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage } from "@/lib/wiki-language";
+import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 
 interface HeaderProps {
   isHome?: boolean;
@@ -20,6 +20,23 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const uiLocale = resolveUiLocale(lang);
+  const uiCopy =
+    uiLocale === "fr"
+      ? {
+          searchPlaceholder: "Rechercher sur Wikipédia...",
+          lightMode: "Mode clair",
+          darkMode: "Mode sombre",
+          sepiaMode: "Sépia (chaud)",
+          dimMode: "Tamisé (froid)",
+        }
+      : {
+          searchPlaceholder: "Search Wikipedia...",
+          lightMode: "Light Mode",
+          darkMode: "Dark Mode",
+          sepiaMode: "Sepia (Warm)",
+          dimMode: "Dim (Cool)",
+        };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -61,7 +78,7 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   required
-                  placeholder="Search Wikipedia..."
+                  placeholder={uiCopy.searchPlaceholder}
                   className="w-full pl-9 pr-12 py-2 rounded-full bg-zinc-100/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800/50 focus:border-blue-500/50 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm placeholder:text-zinc-500"
                 />
                 <div className="absolute right-3 hidden sm:flex items-center gap-0.5 pointer-events-none">
@@ -80,7 +97,7 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
                 type="button"
                 onClick={() => setTheme("light")}
                 className={`p-2 rounded-xl transition-all duration-200 ${theme === 'light' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
-                title="Light Mode"
+                title={uiCopy.lightMode}
               >
                 <Sun className="w-4 h-4" />
               </button>
@@ -88,7 +105,7 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
                 type="button"
                 onClick={() => setTheme("dark")}
                 className={`p-2 rounded-xl transition-all duration-200 ${theme === 'dark' ? 'bg-zinc-800 shadow-sm text-white' : 'text-zinc-400 hover:text-zinc-300'}`}
-                title="Dark Mode"
+                title={uiCopy.darkMode}
               >
                 <Moon className="w-4 h-4" />
               </button>
@@ -96,7 +113,7 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
                 type="button"
                 onClick={() => setTheme("sepia")}
                 className={`p-2 rounded-xl transition-all duration-200 ${theme === 'sepia' ? 'bg-[#efe3cc] ring-1 ring-[#c6a882] shadow-sm text-[#3f2f22]' : 'text-zinc-400 hover:text-amber-700/70'}`}
-                title="Sepia (Warm)"
+                title={uiCopy.sepiaMode}
               >
                 <Coffee className="w-4 h-4" />
               </button>
@@ -104,7 +121,7 @@ export function Header({ isHome = false, hideSearch = false, initialLanguage }: 
                 type="button"
                 onClick={() => setTheme("dim")}
                 className={`p-2 rounded-xl transition-all duration-200 ${theme === 'dim' ? 'bg-[#1f2937] ring-1 ring-[#475569] shadow-sm text-[#7dd3fc]' : 'text-zinc-400 hover:text-sky-400/80'}`}
-                title="Dim (Cool)"
+                title={uiCopy.dimMode}
               >
                 <Monitor className="w-4 h-4" />
               </button>

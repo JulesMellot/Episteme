@@ -29,6 +29,8 @@ This repository contains the Episteme web app:
 
 Episteme aims to ship a companion browser extension to “redirect” Wikipedia pages into the Episteme reader (Wikiwand-like flow).
 
+The extension will support self-hosted instances (custom base URL), so you can use your own Episteme server instead of a public one.
+
 There is currently no extension code in this repository yet (no `manifest.json` / extension build). If the extension lives in a separate repo, link it here.
 
 ## How it works (implementation notes)
@@ -45,6 +47,15 @@ There is currently no extension code in this repository yet (no `manifest.json` 
 - React 19
 - TypeScript
 - Tailwind CSS v4
+
+## Built with AI
+
+This project was built with the help of AI tools/models:
+
+- Codex 5.3
+- Gemini Pro 3.1
+- Kimi K2.6
+- MiniMax 2.7
 
 ## Local development
 
@@ -65,6 +76,34 @@ Open http://localhost:3000
 docker build -t episteme .
 docker run --rm -p 3000:3000 episteme
 ```
+
+## Self-hosting
+
+Episteme can be self-hosted: anyone can run their own instance and keep full control over deployment.
+
+### Self-host with Docker
+
+Build the image:
+
+```bash
+docker build -t episteme .
+```
+
+Run the container:
+
+```bash
+docker run -d --name episteme -p 3000:3000 episteme
+```
+
+Open http://localhost:3000
+
+Optional: set a custom Wikipedia User-Agent:
+
+```bash
+docker run -d --name episteme -p 3000:3000 -e WIKIPEDIA_USER_AGENT="EpistemeReader/1.0 (+https://your-domain.example)" episteme
+```
+
+Once hosted, you can point the browser extension to your instance (custom base URL).
 
 ## Disclaimer
 

@@ -3,7 +3,7 @@ import { searchWikipedia } from "@/lib/wikipedia";
 import { Search, ArrowRight, BookOpen, SearchX, Globe } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { normalizeWikiLanguage, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
+import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
 import { cookies } from "next/headers";
 
 interface PageProps {
@@ -25,12 +25,24 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const language = normalizeWikiLanguage(
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
+  const uiLocale = resolveUiLocale(language);
 
   return {
-    title: trimmed ? `Search: ${trimmed} (${language}) - Episteme` : `Search (${language}) - Episteme`,
+    title:
+      uiLocale === "fr"
+        ? trimmed
+          ? `Recherche : ${trimmed} (${language}) - Episteme`
+          : `Recherche (${language}) - Episteme`
+        : trimmed
+          ? `Search: ${trimmed} (${language}) - Episteme`
+          : `Search (${language}) - Episteme`,
     description: trimmed
-      ? `Search results for "${trimmed}" on Wikipedia (${language}).`
-      : `Search Wikipedia (${language}) on Episteme.`,
+      ? uiLocale === "fr"
+        ? `Résultats de recherche pour "${trimmed}" sur Wikipédia (${language}).`
+        : `Search results for "${trimmed}" on Wikipedia (${language}).`
+      : uiLocale === "fr"
+        ? `Rechercher sur Wikipédia (${language}) avec Episteme.`
+        : `Search Wikipedia (${language}) on Episteme.`,
   };
 }
 
@@ -42,6 +54,31 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const language = normalizeWikiLanguage(
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
+  const uiLocale = resolveUiLocale(language);
+  const uiCopy =
+    uiLocale === "fr"
+      ? {
+          searchPlaceholder: "Que voulez-vous savoir ?",
+          searchCta: "Rechercher",
+          emptyTitle: "Le savoir vous attend",
+          emptyBody: "Parcourez des millions d’articles et enrichissez votre compréhension du monde.",
+          noResultTitle: "Aucun résultat",
+          noResultBodyPrefix: "Aucun article trouvé pour",
+          searchResults: "Résultats de recherche",
+          foundSuffix: "trouvés",
+          article: "Article",
+        }
+      : {
+          searchPlaceholder: "What do you want to know?",
+          searchCta: "Search",
+          emptyTitle: "Knowledge awaits",
+          emptyBody: "Search through millions of articles and expand your understanding of the world.",
+          noResultTitle: "Nothing found",
+          noResultBodyPrefix: "We couldn't find any articles matching",
+          searchResults: "Search Results",
+          foundSuffix: "found",
+          article: "Article",
+        };
 
   const results = trimmed ? await searchWikipedia(trimmed, { language }) : [];
 
@@ -60,7 +97,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 type="text"
                 name="q"
                 defaultValue={trimmed}
-                placeholder="What do you want to know?"
+                placeholder={uiCopy.searchPlaceholder}
                 autoFocus={!trimmed}
                 className="w-full pl-16 pr-32 py-5 sm:py-6 rounded-[2rem] bg-white dark:bg-[#111111] border border-zinc-200/80 dark:border-zinc-800/80 focus:border-zinc-300 dark:focus:border-zinc-700 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-900/50 outline-none transition-all duration-300 text-lg sm:text-xl tracking-tight shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
               />
@@ -68,7 +105,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 type="submit" 
                 className="absolute right-3 sm:right-4 px-6 py-3 sm:py-3.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-[1.5rem] text-sm sm:text-base font-semibold hover:bg-zinc-800 dark:hover:bg-white active:scale-[0.98] transition-all duration-200 shadow-sm"
               >
-                Search
+                {uiCopy.searchCta}
               </button>
             </div>
           </form>
@@ -81,10 +118,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
               <Globe className="w-10 h-10 text-zinc-300 dark:text-zinc-600" />
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-50 mb-4 tracking-tighter">
-              Knowledge awaits
+              {uiCopy.emptyTitle}
             </h2>
             <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-md mb-12 leading-relaxed">
-              Search through millions of articles and expand your understanding of the world.
+              {uiCopy.emptyBody}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {["Typography", "Quantum Mechanics", "Stoicism", "Neural Networks"].map(topic => (
@@ -103,19 +140,19 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <div className="w-20 h-20 rounded-full bg-zinc-50 dark:bg-[#111111] flex items-center justify-center mb-6 border border-zinc-100 dark:border-zinc-800/50">
               <SearchX className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
             </div>
-            <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-3 tracking-tighter">Nothing found</h3>
+            <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mb-3 tracking-tighter">{uiCopy.noResultTitle}</h3>
             <p className="text-zinc-500 dark:text-zinc-400 max-w-sm text-lg">
-              We couldn&apos;t find any articles matching &ldquo;{trimmed}&rdquo;.
+              {uiCopy.noResultBodyPrefix} &ldquo;{trimmed}&rdquo;.
             </p>
           </div>
         ) : (
           <div className="animate-in fade-in duration-700">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                Search Results
+                {uiCopy.searchResults}
               </h2>
               <span className="text-sm font-mono text-zinc-400 dark:text-zinc-500">
-                {results.length} found
+                {results.length} {uiCopy.foundSuffix}
               </span>
             </div>
             
@@ -141,7 +178,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                         <div className="mt-5 flex items-center gap-3 text-sm font-medium text-zinc-400 dark:text-zinc-500">
                           <span className="flex items-center gap-1.5">
                             <BookOpen className="w-4 h-4" />
-                            Article
+                            {uiCopy.article}
                           </span>
                         </div>
                       </div>

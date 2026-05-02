@@ -4,13 +4,16 @@ import { cn } from "@/lib/utils";
 import type { TocItem } from "@/lib/wikipedia";
 import { useEffect, useState } from "react";
 import { ListTree } from "lucide-react";
+import { resolveUiLocale } from "@/lib/wiki-language";
 
 interface SidebarProps {
   toc: TocItem[];
+  language?: string;
 }
 
-export function Sidebar({ toc }: SidebarProps) {
+export function Sidebar({ toc, language = "en" }: SidebarProps) {
   const [activeId, setActiveId] = useState<string>("");
+  const uiLocale = resolveUiLocale(language);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -40,7 +43,7 @@ export function Sidebar({ toc }: SidebarProps) {
         <div className="flex items-center gap-2 mb-6">
           <ListTree className="w-4 h-4 text-zinc-400" />
           <h4 className="font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-            Contents
+            {uiLocale === "fr" ? "Sommaire" : "Contents"}
           </h4>
         </div>
         <nav className="flex flex-col space-y-2 relative">

@@ -2,11 +2,10 @@
 
 import { WikiDonationCTA } from "@/components/WikiDonationCTA";
 
-function getBrowserLanguageTag(): string {
-  if (typeof navigator === "undefined") return "en";
-  return navigator.languages?.[0] ?? navigator.language ?? "en";
-}
+type WikiDonationCTAClientProps = {
+  browserLanguage?: string;
+};
 
-export function WikiDonationCTAClient() {
-  return <WikiDonationCTA browserLanguage={getBrowserLanguageTag()} />;
+export function WikiDonationCTAClient({ browserLanguage = "en" }: WikiDonationCTAClientProps) {
+  return <WikiDonationCTA browserLanguage={browserLanguage} />;
 }
