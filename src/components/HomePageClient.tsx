@@ -4,12 +4,10 @@ import Link from "next/link";
 import { ArrowRight, Puzzle, Zap, BookOpen, Code } from "lucide-react";
 import { useState } from "react";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { BackgroundBeams } from "@/components/BackgroundBeams";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
-import {
-  readPreferredWikiLanguage,
-  resolveUiLocale,
-} from "@/lib/wiki-language";
+import { readPreferredWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 import type { WikipediaTrendingTopic } from "@/lib/wikipedia";
 
 interface HomePageClientProps {
@@ -287,12 +285,12 @@ export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClie
                   ))}
                 </div>
               </div>
-
             </div>
-
           </section>
         </div>
       </main>
+
+      <Footer language={lang} />
     </div>
   );
 }
