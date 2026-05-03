@@ -40,9 +40,15 @@ export interface WikipediaSearchResult {
   pageid: number;
 }
 
+export interface WikipediaTrendingTopic {
+  title: string;
+  views: number;
+}
+
 const USER_AGENT = process.env.WIKIPEDIA_USER_AGENT ?? "EpistemeReader/1.0 (+https://episteme.local)";
 const ARTICLE_REVALIDATE_SECONDS = 3600;
 const SEARCH_REVALIDATE_SECONDS = 300;
+const TRENDING_REVALIDATE_SECONDS = 1800;
 const DEFAULT_RETRIES = 2;
 const INTERLANGUAGE_SOURCE_CANDIDATES = ["fr", "en", "es", "de", "it", "pt", "ja", "zh", "ar", "ru"] as const;
 const BLOCKED_SELECTOR = "script, style, iframe, frame, object, embed, form, link[rel='stylesheet'], meta[http-equiv='refresh']";
@@ -1043,6 +1049,51 @@ function decodeHtml(html: string) {
     .replace(/&nbsp;/g, " ");
 }
 
+function getTrendingDate() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - 1);
+  return {
+    year: String(date.getUTCFullYear()),
+    month: String(date.getUTCMonth() + 1).padStart(2, "0"),
+    day: String(date.getUTCDate()).padStart(2, "0"),
+  };
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function isFilteredTrendingArticle(article: string) {
+  const normalized = safeDecodeURIComponent(article).trim();
+  if (!normalized) return true;
+
+  if (
+    normalized === "Main_Page" ||
+    normalized === "Wikipédia:Accueil_principal" ||
+    normalized === "Special:Search" ||
+    normalized === "Spécial:Recherche"
+  ) {
+    return true;
+  }
+
+  if (
+    normalized.startsWith(".") ||
+    /^(xxx|xnxx)$/i.test(normalized)
+  ) {
+    return true;
+  }
+
+  return /^[^:]+:/.test(normalized);
+}
+
+function formatTrendingTitle(article: string) {
+  return safeDecodeURIComponent(article).replace(/_/g, " ").trim();
+}
+
 async function searchWikipediaUncached(
   query: string,
   {
@@ -1153,4 +1204,115 @@ export async function searchWikipedia(
   }
 
   return getCachedSearch(trimmed, limit, normalizeWikiLanguage(language));
+}
+
+async function getTrendingTopicsUncached(
+  language?: string,
+  {
+    limit = 6,
+    retries = DEFAULT_RETRIES,
+  }: {
+    limit?: number;
+    retries?: number;
+  } = {}
+): Promise<WikipediaTrendingTopic[]> {
+  const normalizedLanguage = normalizeWikiLanguage(language);
+  const { year, month, day } = getTrendingDate();
+  const url = new URL(
+    `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/${normalizedLanguage}.wikipedia/all-access/${year}/${month}/${day}`
+  );
+
+  const res = await fetchWithRetries(
+    url,
+    {
+      cache: "force-cache",
+      headers: {
+        "User-Agent": USER_AGENT,
+        "Api-User-Agent": USER_AGENT,
+        Accept: "application/json",
+      },
+      next: {
+        revalidate: TRENDING_REVALIDATE_SECONDS,
+        tags: ["wikipedia-trending"],
+      },
+    },
+    { retries }
+  );
+
+  if (!res || !res.ok) {
+    return [];
+  }
+
+  let data:
+    | {
+        items?: Array<{
+          articles?: Array<{
+            article: string;
+            views?: number;
+          }>;
+        }>;
+      }
+    | null = null;
+
+  try {
+    data = (await res.json()) as {
+      items?: Array<{
+        articles?: Array<{
+          article: string;
+          views?: number;
+        }>;
+      }>;
+    };
+  } catch {
+    return [];
+  }
+
+  const articles = data?.items?.[0]?.articles ?? [];
+  const seen = new Set<string>();
+
+  return articles
+    .filter((entry) => !isFilteredTrendingArticle(entry.article))
+    .map((entry) => ({
+      title: formatTrendingTitle(entry.article),
+      views: entry.views ?? 0,
+    }))
+    .filter((entry) => {
+      const key = entry.title.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+}
+
+const getCachedTrendingTopics = unstable_cache(
+  async (language: string, limit: number) =>
+    getTrendingTopicsUncached(language, {
+      limit,
+      retries: DEFAULT_RETRIES,
+    }),
+  ["wikipedia-trending-v1"],
+  {
+    revalidate: TRENDING_REVALIDATE_SECONDS,
+    tags: ["wikipedia-trending"],
+  }
+);
+
+export async function getTrendingTopics(
+  language?: string,
+  {
+    limit = 6,
+    retries = DEFAULT_RETRIES,
+  }: {
+    limit?: number;
+    retries?: number;
+  } = {}
+): Promise<WikipediaTrendingTopic[]> {
+  const normalizedLanguage = normalizeWikiLanguage(language);
+
+  if (retries !== DEFAULT_RETRIES) {
+    return getTrendingTopicsUncached(normalizedLanguage, { limit, retries });
+  }
+
+  return getCachedTrendingTopics(normalizedLanguage, limit);
 }

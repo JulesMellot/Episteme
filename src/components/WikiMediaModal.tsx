@@ -43,6 +43,8 @@ interface ModalState {
   data: MediaFilePayload | null;
 }
 
+const modalEase = [0.16, 1, 0.3, 1] as const;
+
 function normalizeMediaTitle(rawTitle: string) {
   const cleaned = rawTitle.replace(/_/g, " ").trim();
   if (/^fichier:/i.test(cleaned)) return `File:${cleaned.slice("Fichier:".length)}`;
@@ -286,7 +288,7 @@ export function WikiMediaModal({ language }: WikiMediaModalProps) {
   // Motion variants
   const backdropVariants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+    visible: { opacity: 1, transition: { duration: 0.4, ease: modalEase } },
   };
 
   const sidebarVariants = {
@@ -295,13 +297,13 @@ export function WikiMediaModal({ language }: WikiMediaModalProps) {
       opacity: 1, 
       x: 0, 
       scale: 1,
-      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.05, delayChildren: 0.1 }
+      transition: { duration: 0.5, ease: modalEase, staggerChildren: 0.05, delayChildren: 0.1 }
     },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: modalEase } }
   };
 
   return (

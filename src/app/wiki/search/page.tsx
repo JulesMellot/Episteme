@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
 import { cookies } from "next/headers";
+import { absoluteUrl } from "@/lib/site";
 
 interface PageProps {
   searchParams: Promise<{
@@ -27,23 +28,39 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
   const uiLocale = resolveUiLocale(language);
+  const canonical = trimmed
+    ? absoluteUrl(`/wiki/search?q=${encodeURIComponent(trimmed)}&lang=${encodeURIComponent(language)}`)
+    : absoluteUrl(`/wiki/search?lang=${encodeURIComponent(language)}`);
+  const description = trimmed
+    ? uiLocale === "fr"
+      ? `Resultats de recherche pour "${trimmed}" sur Wikipedia (${language}) avec Episteme.`
+      : `Search results for "${trimmed}" on Wikipedia (${language}) with Episteme.`
+    : uiLocale === "fr"
+      ? `Rechercher sur Wikipedia avec Episteme, un lecteur rapide et une alternative a Wikiwand.`
+      : `Search Wikipedia with Episteme, a fast reader and Wikiwand alternative.`;
 
   return {
     title:
       uiLocale === "fr"
         ? trimmed
-          ? `Recherche : ${trimmed} (${language}) - Episteme`
-          : `Recherche (${language}) - Episteme`
+          ? `Recherche : ${trimmed} (${language})`
+          : `Recherche Wikipedia (${language})`
         : trimmed
-          ? `Search: ${trimmed} (${language}) - Episteme`
-          : `Search (${language}) - Episteme`,
-    description: trimmed
-      ? uiLocale === "fr"
-        ? `Résultats de recherche pour "${trimmed}" sur Wikipédia (${language}).`
-        : `Search results for "${trimmed}" on Wikipedia (${language}).`
-      : uiLocale === "fr"
-        ? `Rechercher sur Wikipédia (${language}) avec Episteme.`
-        : `Search Wikipedia (${language}) on Episteme.`,
+          ? `Search: ${trimmed} (${language})`
+          : `Wikipedia Search (${language})`,
+    description,
+    alternates: {
+      canonical,
+    },
+    robots: trimmed
+      ? {
+          index: false,
+          follow: true,
+        }
+      : {
+          index: true,
+          follow: true,
+        },
   };
 }
 

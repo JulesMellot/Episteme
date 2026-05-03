@@ -1,227 +1,31 @@
-"use client";
+import { cookies } from "next/headers";
+import type { Metadata } from "next";
+import { WikiFromFilePageClient } from "@/components/WikiFromFilePageClient";
+import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
+import { absoluteUrl } from "@/lib/site";
 
-import { Header } from "@/components/Header";
-import { ArrowRight, FileText, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { DEFAULT_WIKI_LANGUAGE, normalizeWikiLanguage, readPreferredWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
+export const metadata: Metadata = {
+  title: "Open a Wikipedia Article From a File",
+  description: "Open a Wikipedia article from a title or URL stored in a text file.",
+  alternates: {
+    canonical: absoluteUrl("/wiki/from-file"),
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
-interface ParsedWikipediaInput {
-  title: string;
-  language: string;
-}
-
-function extractWikipediaInput(input: string, fallbackLanguage: string): ParsedWikipediaInput | null {
-  const raw = input
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0);
-
-  if (!raw) return null;
-
-  const extractFromPath = (pathname: string): string | null => {
-    const wikiPrefix = "/wiki/";
-    const restPrefix = "/api/rest_v1/page/html/";
-
-    const stripQueryAndHash = (v: string) => v.split(/[?#]/)[0] ?? v;
-
-    if (pathname.startsWith(wikiPrefix)) {
-      const title = decodeURIComponent(stripQueryAndHash(pathname).slice(wikiPrefix.length));
-      return title.replace(/_/g, " ").trim() || null;
-    }
-
-    if (pathname.startsWith(restPrefix)) {
-      const title = decodeURIComponent(stripQueryAndHash(pathname).slice(restPrefix.length));
-      return title.replace(/_/g, " ").trim() || null;
-    }
-
-    return null;
-  };
-
-  const tryParseUrl = (value: string): URL | null => {
-    try {
-      return new URL(value);
-    } catch {
-      return null;
-    }
-  };
-
-  const url = tryParseUrl(raw);
-  if (url) {
-    const hostMatch = url.hostname.toLowerCase().match(/^([a-z][a-z0-9-]{0,14})\.wikipedia\.org$/);
-    if (!hostMatch) return null;
-    const title = extractFromPath(url.pathname);
-    if (!title) return null;
-    return { title, language: normalizeWikiLanguage(hostMatch[1]) };
-  }
-
-  const schemeLessUrlMatch = raw.match(/^(?:https?:\/\/)?([a-z][a-z0-9-]{0,14})\.wikipedia\.org(\/.*)$/i);
-  if (schemeLessUrlMatch?.[2]) {
-    const title = extractFromPath(schemeLessUrlMatch[2]);
-    if (!title) return null;
-    return { title, language: normalizeWikiLanguage(schemeLessUrlMatch[1]) };
-  }
-
-  if (raw.startsWith("/wiki/") || raw.startsWith("/api/rest_v1/page/html/")) {
-    const title = extractFromPath(raw);
-    if (!title) return null;
-    return { title, language: fallbackLanguage };
-  }
-
-  if (raw.includes("wikipedia.org")) return null;
-
-  const title = raw.replace(/_/g, " ").trim();
-  if (!title) return null;
-  return { title, language: fallbackLanguage };
-}
-
-function titleToSlug(title: string): string {
-  return title.trim().replace(/\s+/g, "_");
-}
-
-export default function WikiFromFilePage() {
-  const router = useRouter();
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [lang] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_WIKI_LANGUAGE;
-    return readPreferredWikiLanguage();
-  });
-  const uiLocale = resolveUiLocale(lang);
-  const uiCopy =
-    uiLocale === "fr"
-      ? {
-          fileTooLarge: "Le fichier est trop volumineux (max 1 Mo).",
-          title: "Ouvrir un article depuis un fichier",
-          subtitle:
-            "Uploade un fichier texte contenant un titre Wikipédia, ou une URL d’article, puis ouvre la page correspondante.",
-          chooseFile: "Choisir un fichier .txt",
-          example: "Ex: “React (software)” ou “https://fr.wikipedia.org/wiki/React_(software)”",
-          noFile: "Aucun fichier sélectionné",
-          placeholder: "Colle ici un titre ou une URL Wikipédia…",
-          parseError: "Impossible d’extraire un titre Wikipédia depuis ce contenu.",
-          openArticle: "Ouvrir l’article",
-          detectedTitle: "Titre détecté",
-        }
-      : {
-          fileTooLarge: "File is too large (max 1 MB).",
-          title: "Open an article from a file",
-          subtitle:
-            "Upload a text file containing a Wikipedia title or article URL, then open the corresponding page.",
-          chooseFile: "Choose a .txt file",
-          example: 'Example: "React (software)" or "https://fr.wikipedia.org/wiki/React_(software)"',
-          noFile: "No file selected",
-          placeholder: "Paste a Wikipedia title or URL here...",
-          parseError: "Unable to extract a Wikipedia title from this content.",
-          openArticle: "Open article",
-          detectedTitle: "Detected title",
-        };
-
-  const inferredInput = useMemo(() => extractWikipediaInput(text, lang), [text, lang]);
-
-  const handleOpenArticle = ({ title, language }: ParsedWikipediaInput) => {
-    const slug = titleToSlug(title);
-    router.push(`/wiki/${encodeURIComponent(slug)}?lang=${encodeURIComponent(language)}`);
-  };
-
-  const handleFile = async (file: File) => {
-    setError(null);
-    setFileName(file.name);
-
-    if (file.size > 1024 * 1024) {
-      setError(uiCopy.fileTooLarge);
-      return;
-    }
-
-    const content = await file.text();
-    setText(content);
-  };
-
-  return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950">
-      <Header initialLanguage={lang} />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-14 max-w-[1000px]">
-        <div className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
-            {uiCopy.title}
-          </h1>
-          <p className="mt-3 text-zinc-600 dark:text-zinc-400 max-w-[70ch]">
-            {uiCopy.subtitle}
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/60 dark:bg-zinc-900/30 p-6 sm:p-8">
-          <label className="group relative flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300/70 dark:border-zinc-700/70 bg-white/70 dark:bg-zinc-950/40 px-6 py-10 text-center cursor-pointer transition-colors hover:border-zinc-400 dark:hover:border-zinc-600">
-            <input
-              type="file"
-              accept=".txt,text/plain"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
-              }}
-            />
-            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center border border-zinc-200/70 dark:border-zinc-800/70">
-              <Upload className="w-5 h-5 text-zinc-600 dark:text-zinc-300" />
-            </div>
-            <div>
-              <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                {uiCopy.chooseFile}
-              </div>
-              <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                {uiCopy.example}
-              </div>
-            </div>
-          </label>
-
-          <div className="mt-6 grid grid-cols-1 gap-4">
-            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-              <FileText className="w-4 h-4" />
-              <span>{fileName ? fileName : uiCopy.noFile}</span>
-            </div>
-
-            <textarea
-              value={text}
-              onChange={(e) => {
-                setError(null);
-                setFileName(null);
-                setText(e.target.value);
-              }}
-              placeholder={uiCopy.placeholder}
-              className="w-full min-h-[160px] rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800/60 p-4 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 transition"
-            />
-
-            {error && (
-              <div className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="button"
-              disabled={!inferredInput}
-              onClick={() => {
-                if (!inferredInput) {
-                  setError(uiCopy.parseError);
-                  return;
-                }
-                handleOpenArticle(inferredInput);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              {uiCopy.openArticle}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            {inferredInput && (
-              <div className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
-                {uiCopy.detectedTitle}: {inferredInput.title} ({inferredInput.language})
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
+export default async function WikiFromFilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string | string[] }>;
+}) {
+  const { lang } = await searchParams;
+  const cookieStore = await cookies();
+  const initialLanguage = normalizeWikiLanguage(
+    (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value ?? DEFAULT_WIKI_LANGUAGE
   );
+
+  return <WikiFromFilePageClient initialLanguage={initialLanguage} />;
 }

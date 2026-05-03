@@ -42,6 +42,7 @@ export function SearchAutocomplete({
   const router = useRouter();
   const listboxId = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -77,8 +78,19 @@ export function SearchAutocomplete({
       }
     }
 
+    function handleGlobalKeyDown(event: globalThis.KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        inputRef.current?.focus();
+      }
+    }
+
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleGlobalKeyDown);
+    };
   }, []);
 
   useEffect(() => {
@@ -297,6 +309,7 @@ export function SearchAutocomplete({
             <Search className={styles.icon} />
             <input type="hidden" name="lang" value={language} />
             <input
+              ref={inputRef}
               type="text"
               name="q"
               required

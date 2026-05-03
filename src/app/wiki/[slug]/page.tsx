@@ -9,6 +9,7 @@ import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } fro
 import { cookies } from "next/headers";
 import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
 import { WikiArticleContent } from "@/components/WikiArticleContent";
+import { buildWikiArticleUrl, truncateDescription } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{
@@ -28,13 +29,47 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
   );
   const uiLocale = resolveUiLocale(language);
+  const page = await getPage(slug, 2, language);
+  const title = page?.title ?? decodedSlug;
+  const description = truncateDescription(
+    page?.summary ??
+      (uiLocale === "fr"
+        ? `Lire ${title} sur Wikipedia (${language}) avec Episteme, un lecteur rapide et une alternative a Wikiwand.`
+        : `Read ${title} from Wikipedia (${language}) on Episteme, a fast reader and Wikiwand alternative.`)
+  );
+  const canonicalUrl = buildWikiArticleUrl(slug, language);
+  const openGraphImages =
+    page?.kind === "file" && page.thumbUrl
+      ? [
+          {
+            url: page.thumbUrl,
+            alt: title,
+          },
+        ]
+      : undefined;
   
   return {
-    title: `${decodedSlug} (${language}) - Episteme`,
-    description:
+    title:
       uiLocale === "fr"
-        ? `Lire ${decodedSlug} sur Wikipédia (${language}) avec Episteme.`
-        : `Read about ${decodedSlug} from Wikipedia (${language}) on Episteme.`,
+        ? `${title} sur Wikipedia (${language})`
+        : `${title} on Wikipedia (${language})`,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      type: page?.kind === "file" ? "website" : "article",
+      images: openGraphImages,
+    },
+    twitter: {
+      card: openGraphImages ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: openGraphImages?.map((image) => image.url),
+    },
   };
 }
 
