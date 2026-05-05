@@ -1,5 +1,3 @@
-"use client";
-
 import { WikiDonationCTA } from "@/components/WikiDonationCTA";
 
 type WikiDonationCTAClientProps = {

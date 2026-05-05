@@ -40,6 +40,14 @@ export interface WikipediaSearchResult {
   pageid: number;
 }
 
+export interface WikipediaArticlePreview {
+  title: string;
+  summary: string | null;
+  thumbnailUrl: string | null;
+  thumbnailWidth: number | null;
+  thumbnailHeight: number | null;
+}
+
 export interface WikipediaTrendingTopic {
   title: string;
   views: number;
@@ -49,6 +57,7 @@ const USER_AGENT = process.env.WIKIPEDIA_USER_AGENT ?? "EpistemeReader/1.0 (+htt
 const ARTICLE_REVALIDATE_SECONDS = 3600;
 const SEARCH_REVALIDATE_SECONDS = 300;
 const TRENDING_REVALIDATE_SECONDS = 1800;
+const PREVIEW_REVALIDATE_SECONDS = 86400;
 const DEFAULT_RETRIES = 2;
 const INTERLANGUAGE_SOURCE_CANDIDATES = ["fr", "en", "es", "de", "it", "pt", "ja", "zh", "ar", "ru"] as const;
 const BLOCKED_SELECTOR = "script, style, iframe, frame, object, embed, form, link[rel='stylesheet'], meta[http-equiv='refresh']";
@@ -1204,6 +1213,117 @@ export async function searchWikipedia(
   }
 
   return getCachedSearch(trimmed, limit, normalizeWikiLanguage(language));
+}
+
+async function getArticlePreviewUncached(
+  title: string,
+  {
+    retries = DEFAULT_RETRIES,
+    language,
+  }: {
+    retries?: number;
+    language?: string;
+  } = {}
+): Promise<WikipediaArticlePreview | null> {
+  const normalizedTitle = normalizeSlug(title);
+  if (!normalizedTitle) return null;
+
+  const url = `${wikipediaApiBase(language)}/api/rest_v1/page/summary/${encodeURIComponent(normalizedTitle)}`;
+  const res = await fetchWithRetries(
+    url,
+    {
+      cache: "force-cache",
+      headers: {
+        "User-Agent": USER_AGENT,
+        "Api-User-Agent": USER_AGENT,
+        Accept: "application/json",
+      },
+      next: {
+        revalidate: PREVIEW_REVALIDATE_SECONDS,
+        tags: ["wikipedia-preview"],
+      },
+    },
+    { retries }
+  );
+
+  if (!res || !res.ok) {
+    if (res?.status === 404) return null;
+    return null;
+  }
+
+  let data:
+    | {
+        title?: string;
+        extract?: string;
+        thumbnail?: {
+          source?: string;
+          width?: number;
+          height?: number;
+        };
+      }
+    | null = null;
+
+  try {
+    data = (await res.json()) as {
+      title?: string;
+      extract?: string;
+      thumbnail?: {
+        source?: string;
+        width?: number;
+        height?: number;
+      };
+    };
+  } catch {
+    return null;
+  }
+
+  const previewTitle = normalizeWhitespace(data?.title ?? normalizedTitle);
+  if (!previewTitle) return null;
+
+  const summary = normalizeWhitespace(data?.extract ?? "");
+
+  return {
+    title: previewTitle,
+    summary: summary || null,
+    thumbnailUrl: data?.thumbnail?.source ?? null,
+    thumbnailWidth:
+      typeof data?.thumbnail?.width === "number" ? data.thumbnail.width : null,
+    thumbnailHeight:
+      typeof data?.thumbnail?.height === "number" ? data.thumbnail.height : null,
+  };
+}
+
+const getCachedArticlePreview = unstable_cache(
+  async (title: string, language: string) =>
+    getArticlePreviewUncached(title, {
+      retries: DEFAULT_RETRIES,
+      language,
+    }),
+  ["wikipedia-preview-v1"],
+  {
+    revalidate: PREVIEW_REVALIDATE_SECONDS,
+    tags: ["wikipedia-preview"],
+  }
+);
+
+export async function getArticlePreview(
+  title: string,
+  {
+    retries = DEFAULT_RETRIES,
+    language,
+  }: {
+    retries?: number;
+    language?: string;
+  } = {}
+): Promise<WikipediaArticlePreview | null> {
+  const normalizedTitle = normalizeSlug(title);
+  if (!normalizedTitle) return null;
+
+  if (retries !== DEFAULT_RETRIES) {
+    return getArticlePreviewUncached(normalizedTitle, { retries, language });
+  }
+
+  return getCachedArticlePreview(normalizedTitle, normalizeWikiLanguage(language));
 }
 
 async function getTrendingTopicsUncached(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 type DonationCopy = {
   title: string;
@@ -147,9 +147,15 @@ function isDismissed(): boolean {
 }
 
 export function WikiDonationCTA({ browserLanguage = "en" }: WikiDonationCTAProps) {
-  const [isVisible, setIsVisible] = useState(() => !isDismissed());
+  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const isDismissedOnClient = useSyncExternalStore(
+    () => () => {},
+    () => isDismissed(),
+    () => false
+  );
   const copy = getDonationCopy(browserLanguage);
   const donateHref = `https://donate.wikimedia.org/?uselang=${encodeURIComponent(browserLanguage)}`;
+  const isVisible = !isManuallyClosed && !isDismissedOnClient;
 
   if (!isVisible) return null;
 
@@ -163,7 +169,7 @@ export function WikiDonationCTA({ browserLanguage = "en" }: WikiDonationCTAProps
             const hiddenUntil = Date.now() + ONE_WEEK_IN_MS;
             window.localStorage.setItem(DISMISS_STORAGE_KEY, String(hiddenUntil));
           }
-          setIsVisible(false);
+          setIsManuallyClosed(true);
         }}
         className="absolute top-2 right-2 inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-emerald-900/80 dark:text-emerald-100/80 hover:bg-emerald-200/60 dark:hover:bg-emerald-800/70 transition-colors"
       >
