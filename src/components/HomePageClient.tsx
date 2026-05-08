@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Puzzle, Zap, BookOpen, Code } from "lucide-react";
+import { Puzzle, Zap, BookOpen, Code } from "lucide-react";
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,6 +17,8 @@ interface HomePageClientProps {
 }
 
 const EXTENSION_REPO_URL = "https://github.com/JulesMellot/episteme_extension";
+const FIREFOX_ADDON_URL = "https://addons.mozilla.org/fr/firefox/addon/episteme/";
+const FIREFOX_BADGE_URL = "https://blog.mozilla.org/addons/files/2015/11/get-the-addon.png";
 
 export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClientProps) {
   const [lang] = useState(() => {
@@ -52,8 +55,9 @@ export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClie
           bentoOpenBody: "Code source ouvert, transparent et respectueux de la vie privée.",
           extensionTitle: "Ouvre Wikipedia dans Episteme en un clic",
           extensionBody:
-            "Installe Episteme Redirect pour envoyer automatiquement les articles Wikipedia vers une lecture plus propre. L'extension fonctionne avec Chrome et Firefox, et peut aussi pointer vers ta propre instance.",
-          extensionCta: "Voir l'extension sur GitHub",
+            "Installe Episteme Redirect pour ouvrir automatiquement les pages Wikipedia dans Episteme.",
+          extensionChromeHint: "Pour Chrome (installation manuelle), utilise le dépôt GitHub :",
+          extensionChromeCta: "Installer via GitHub",
           bentoFaqTitle: "Questions fréquentes",
           faqs: [
             {
@@ -100,8 +104,9 @@ export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClie
           bentoOpenBody: "Open source, transparent, and privacy-respecting.",
           extensionTitle: "Open Wikipedia in Episteme with one click",
           extensionBody:
-            "Install Episteme Redirect to automatically send Wikipedia articles into a cleaner reading flow. The extension works with Chrome and Firefox, and can also point to your own hosted instance.",
-          extensionCta: "View extension on GitHub",
+            "Install Episteme Redirect to automatically open Wikipedia pages in Episteme.",
+          extensionChromeHint: "For Chrome (manual install), use the GitHub repository:",
+          extensionChromeCta: "Install via GitHub",
           bentoFaqTitle: "Frequently Asked Questions",
           faqs: [
             {
@@ -198,16 +203,33 @@ export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClie
                 <p className="mt-4 text-base sm:text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {uiCopy.extensionBody}
                 </p>
-                <div className="mt-8">
+                <div className="mt-8 flex flex-col items-center gap-5">
                   <a
-                    href={EXTENSION_REPO_URL}
+                    href={FIREFOX_ADDON_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-zinc-900 px-6 py-3.5 text-sm font-medium text-white transition-all hover:bg-zinc-800 hover:scale-[0.98] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white shadow-[0_4px_14px_0_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] dark:hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)]"
+                    className="inline-flex transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-md"
+                    aria-label="Get the add-on for Firefox"
                   >
-                    {uiCopy.extensionCta}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    <Image
+                      src={FIREFOX_BADGE_URL}
+                      alt="Get the add-on for Firefox"
+                      width={172}
+                      height={60}
+                      className="h-auto w-auto"
+                    />
                   </a>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {uiCopy.extensionChromeHint}{" "}
+                    <a
+                      href={EXTENSION_REPO_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-700 dark:text-zinc-100 dark:decoration-zinc-600 dark:hover:text-zinc-300"
+                    >
+                      {uiCopy.extensionChromeCta}
+                    </a>
+                  </p>
                 </div>
               </div>
             </div>

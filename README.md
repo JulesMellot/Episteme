@@ -36,6 +36,9 @@ Episteme aims to ship a companion browser extension to “redirect” Wikipedia 
 
 The extension will support self-hosted instances (custom base URL), so you can use your own Episteme server instead of a public one.
 
+Available on Firefox Add-ons:
+[![Get the add-on for Firefox](https://blog.mozilla.org/addons/files/2015/11/get-the-addon.png)](https://addons.mozilla.org/fr/firefox/addon/episteme/)
+
 Extension repository:
 https://github.com/JulesMellot/episteme_extension
 
