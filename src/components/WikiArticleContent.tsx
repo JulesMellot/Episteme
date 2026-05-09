@@ -45,6 +45,7 @@ const ARTICLE_PREVIEW_BLOCKED_PATHS = new Set(["search", "from-file"]);
 const ARTICLE_PREVIEW_TIMEOUT_MS = 2500;
 const PREVIEW_VIEWPORT_GAP = 8;
 const ENABLE_ARTICLE_LINK_PREVIEWS = false;
+const SECTION_COLLAPSE_STORAGE_KEY = "episteme-collapsed-sections";
 
 function normalizeText(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -290,6 +291,76 @@ export function WikiArticleContent({ html, language }: WikiArticleContentProps) 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+
+    const readCollapsedSectionIds = () => {
+      try {
+        const raw = window.localStorage.getItem(SECTION_COLLAPSE_STORAGE_KEY);
+        if (!raw) return new Set<string>();
+        const parsed = JSON.parse(raw) as string[];
+        return new Set(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        return new Set<string>();
+      }
+    };
+
+    const writeCollapsedSectionIds = (ids: Set<string>) => {
+      window.localStorage.setItem(SECTION_COLLAPSE_STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    };
+
+    const setSectionCollapsed = (heading: HTMLElement, collapsed: boolean) => {
+      let node = heading.nextElementSibling;
+      while (node && node.tagName.toLowerCase() !== "h2") {
+        const element = node as HTMLElement;
+        element.hidden = collapsed;
+        element.setAttribute("data-section-collapsed-hidden", collapsed ? "true" : "false");
+        node = node.nextElementSibling;
+      }
+
+      heading.setAttribute("data-section-collapsed", collapsed ? "true" : "false");
+      const toggleButton = heading.querySelector<HTMLButtonElement>(".wiki-section-toggle");
+      if (toggleButton) {
+        toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggleButton.textContent = collapsed ? "+" : "−";
+      }
+    };
+
+    const setupSectionCollapseUi = () => {
+      const collapsedIds = readCollapsedSectionIds();
+      const headings = Array.from(root.querySelectorAll<HTMLElement>("h2"));
+
+      headings.forEach((heading, index) => {
+        if (!heading.id) {
+          heading.id = `section-${index + 1}`;
+        }
+
+        if (!heading.querySelector(".wiki-section-toggle")) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "wiki-section-toggle";
+          button.setAttribute("aria-label", "Toggle section");
+          button.textContent = "−";
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentlyCollapsed = heading.getAttribute("data-section-collapsed") === "true";
+            const nextCollapsed = !currentlyCollapsed;
+            setSectionCollapsed(heading, nextCollapsed);
+            if (nextCollapsed) {
+              collapsedIds.add(heading.id);
+            } else {
+              collapsedIds.delete(heading.id);
+            }
+            writeCollapsedSectionIds(collapsedIds);
+          });
+          heading.appendChild(button);
+        }
+
+        const shouldCollapse = collapsedIds.has(heading.id);
+        setSectionCollapsed(heading, shouldCollapse);
+      });
+    };
+
+    setupSectionCollapseUi();
 
     const hoverMedia = window.matchMedia("(hover: hover)");
 

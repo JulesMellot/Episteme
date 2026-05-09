@@ -216,6 +216,7 @@ export function HomePageClient({ initialLanguage, trendingTopics }: HomePageClie
                       alt="Get the add-on for Firefox"
                       width={172}
                       height={60}
+                      unoptimized
                       className="h-auto w-auto"
                     />
                   </a>

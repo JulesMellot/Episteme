@@ -99,6 +99,14 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
           open: "Open",
           license: "License",
         };
+  const articleUiCopy =
+    uiLocale === "fr"
+      ? {
+          quickFacts: "Faits rapides",
+        }
+      : {
+          quickFacts: "Quick facts",
+        };
   const page = await getPage(slug, 2, language);
 
   if (!page) {
@@ -113,7 +121,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
         <Header initialLanguage={language} />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1200px]">
           <header className="mb-10 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight leading-[1.1]">
+            <h1 className="wiki-article-title text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight leading-[1.1]">
               {page.title}
             </h1>
             {page.summary && (
@@ -199,9 +207,9 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
         <Sidebar toc={page.toc} language={language} />
         
         {/* Middle Column: Main Content */}
-        <article className="flex-1 min-w-0 w-full max-w-[860px] xl:max-w-[940px] pb-32 order-1 lg:order-none">
+        <article className="wiki-article-shell flex-1 min-w-0 w-full pb-32 order-1 lg:order-none">
           <header className="mb-14 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tighter leading-[1.1] mb-6">
+            <h1 className="wiki-article-title text-4xl md:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tighter leading-[1.1] mb-6">
               {page.title}
             </h1>
             
@@ -213,6 +221,21 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
             
           </header>
 
+          {page.infoboxHtml && (
+            <details className="wiki-infobox-mobile w-full lg:hidden mb-10 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/70 dark:bg-zinc-900/30 overflow-hidden">
+              <summary className="list-none cursor-pointer px-4 py-3 text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-100 flex items-center justify-between">
+                <span>{articleUiCopy.quickFacts}</span>
+                <span className="text-zinc-400 dark:text-zinc-500 text-xs">+</span>
+              </summary>
+              <div className="max-h-[50vh] overflow-y-auto overflow-x-hidden pb-4 px-4">
+                <div
+                  className="wiki-infobox"
+                  dangerouslySetInnerHTML={{ __html: page.infoboxHtml }}
+                />
+              </div>
+            </details>
+          )}
+
           <WikiArticleContent html={page.html} language={language} />
 
           <WikiDonationCTAClient browserLanguage={language} />
@@ -220,10 +243,10 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
 
         {/* Right Sidebar: Infobox */}
         {page.infoboxHtml && (
-          <aside className="w-full lg:w-[320px] xl:w-[360px] shrink-0 order-first lg:order-last mb-12 lg:mb-0 lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)]">
+          <aside className="wiki-infobox-aside hidden lg:block w-full lg:w-[320px] xl:w-[360px] shrink-0 lg:order-last mb-12 lg:mb-0 lg:sticky lg:top-28 lg:h-[calc(100vh-8rem)]">
             <div className="relative h-full rounded-md overflow-hidden">
               <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-hide pb-12">
-                <div 
+                <div
                   className="wiki-infobox"
                   dangerouslySetInnerHTML={{ __html: page.infoboxHtml }}
                 />

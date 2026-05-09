@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Sora, JetBrains_Mono } from "next/font/google";
+import { Sora, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { absoluteUrl, DEFAULT_SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -13,6 +13,13 @@ const sora = Sora({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+});
+
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair-display",
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -56,9 +63,14 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning is CRITICAL here for next-themes to work properly in React 19
-    <html lang="en" className="antialiased" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${sora.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable} antialiased`}
+      data-typography="editorial"
+      suppressHydrationWarning
+    >
       <body
-        className={`${sora.variable} ${jetbrainsMono.variable} font-sans`}
+        className="font-sans"
         suppressHydrationWarning
       >
         <Script
