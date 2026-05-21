@@ -134,7 +134,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               {["Typography", "Quantum Mechanics", "Stoicism", "Neural Networks"].map(topic => (
                 <Link 
                   key={topic} 
-                  href={`/wiki/search?q=${encodeURIComponent(topic)}&lang=${language}`}
+                  href={`/wiki/search?q=${encodeURIComponent(topic)}&lang=${encodeURIComponent(language)}`}
                   className="px-6 py-3 rounded-full bg-white dark:bg-[#111111] border border-zinc-200 dark:border-zinc-800/80 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm active:scale-95 transition-all duration-200 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
                 >
                   {topic}

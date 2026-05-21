@@ -122,7 +122,7 @@ function wikipediaApiBase(language?: string) {
 }
 
 function normalizeSlug(slug: string) {
-  return decodeURIComponent(slug).replace(/_/g, " ").trim();
+  return safeDecodeURIComponent(slug).replace(/_/g, " ").trim();
 }
 
 function isWikimediaMapUrl(rawUrl: string) {
@@ -434,7 +434,9 @@ export async function getFile(slug: string, retries = 2, language?: string): Pro
 
   const descriptionUrl = core.file_description_url ? `https:${core.file_description_url}` : null;
   const fileTitleFromDesc =
-    descriptionUrl && descriptionUrl.includes("/wiki/") ? decodeURIComponent(descriptionUrl.split("/wiki/")[1] ?? "") : "";
+    descriptionUrl && descriptionUrl.includes("/wiki/")
+      ? safeDecodeURIComponent(descriptionUrl.split("/wiki/")[1] ?? "")
+      : "";
   const canonicalTitle = fileTitleFromDesc ? fileTitleFromDesc.replace(/_/g, " ").trim() : title;
 
   let descriptionHtml: string | null = null;
@@ -519,7 +521,8 @@ export async function getFile(slug: string, retries = 2, language?: string): Pro
 }
 
 export async function getArticle(slug: string, retries = 2, language?: string): Promise<WikipediaArticle | null> {
-  const url = `${wikipediaApiBase(language)}/api/rest_v1/page/html/${encodeURIComponent(slug)}`;
+  const restTitle = normalizeSlug(slug).replace(/\s+/g, "_");
+  const url = `${wikipediaApiBase(language)}/api/rest_v1/page/html/${encodeURIComponent(restTitle)}`;
   const res = await fetchWithRetries(
     url,
     {
@@ -1037,7 +1040,7 @@ function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
     infoboxHtml = sanitizeHtmlFragment(infoboxHtml);
   }
 
-  const titleText = $('title').text() || decodeURIComponent(slug).replace(/_/g, ' ');
+  const titleText = $("title").text() || normalizeSlug(slug);
 
   return {
     title: titleText,

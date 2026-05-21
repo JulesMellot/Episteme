@@ -9,8 +9,17 @@ export function absoluteUrl(path = "/") {
   return new URL(path, `${SITE_URL}/`).toString();
 }
 
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function buildWikiArticleUrl(slug: string, language: string) {
-  return absoluteUrl(`/wiki/${encodeURIComponent(slug)}?lang=${encodeURIComponent(language)}`);
+  const decodedSlug = safeDecodeURIComponent(slug);
+  return absoluteUrl(`/wiki/${encodeURIComponent(decodedSlug)}?lang=${encodeURIComponent(language)}`);
 }
 
 export function truncateDescription(value: string | null | undefined, maxLength = 160) {
