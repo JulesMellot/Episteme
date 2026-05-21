@@ -1,4 +1,4 @@
-import { Header } from "@/components/Header";
+import { HeaderOptimized } from "@/components/HeaderOptimized";
 import { searchWikipedia } from "@/lib/wikipedia";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { ArrowRight, BookOpen, SearchX, Globe } from "lucide-react";
@@ -102,7 +102,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-[100dvh] bg-[#fdfdfc] dark:bg-[#0a0a0a] selection:bg-zinc-200 dark:selection:bg-zinc-800">
-      <Header hideSearch initialLanguage={language} />
+      <HeaderOptimized hideSearch initialLanguage={language} />
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24 max-w-3xl">
         {/* Search Bar Section */}

@@ -1,6 +1,6 @@
 import { getPage } from "@/lib/wikipedia";
 import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
+import { HeaderOptimized } from "@/components/HeaderOptimized";
 import { WikiMediaModalTrigger } from "@/components/WikiMediaModalTrigger";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -118,7 +118,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
 
     return (
       <div className="min-h-screen bg-white dark:bg-zinc-950">
-        <Header initialLanguage={language} />
+        <HeaderOptimized initialLanguage={language} />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1200px]">
           <header className="mb-10 pb-8 border-b border-zinc-200/50 dark:border-zinc-800/50">
             <h1 className="wiki-article-title text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight leading-[1.1]">
@@ -201,7 +201,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
-      <Header initialLanguage={language} />
+      <HeaderOptimized initialLanguage={language} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-[1600px] flex flex-col lg:flex-row items-start justify-center gap-8 lg:gap-12">
         {/* Left Sidebar: Table of Contents */}
         <Sidebar toc={page.toc} language={language} />
