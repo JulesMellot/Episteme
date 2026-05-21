@@ -1,7 +1,7 @@
 import { getPage } from "@/lib/wikipedia";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
-import { WikiMediaModal } from "@/components/WikiMediaModal";
+import { WikiMediaModalTrigger } from "@/components/WikiMediaModalTrigger";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Image from "next/image";
@@ -257,7 +257,7 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
         )}
       </main>
       <div className="scroll-hint-fade scroll-hint-fade--page" aria-hidden />
-      <WikiMediaModal language={language} />
+      <WikiMediaModalTrigger language={language} />
     </div>
   );
 }

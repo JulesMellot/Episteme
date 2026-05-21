@@ -4,6 +4,8 @@ import { normalizeWikiLanguage } from "@/lib/wiki-language";
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_LIMIT = 8;
+const SEARCH_REVALIDATE_SECONDS = 300;
+const SEARCH_STALE_SECONDS = 3600;
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
@@ -27,9 +29,16 @@ export async function GET(request: NextRequest) {
     limit,
   });
 
-  return NextResponse.json({
-    query,
-    language,
-    results,
-  });
+  return NextResponse.json(
+    {
+      query,
+      language,
+      results,
+    },
+    {
+      headers: {
+        "Cache-Control": `public, max-age=0, s-maxage=${SEARCH_REVALIDATE_SECONDS}, stale-while-revalidate=${SEARCH_STALE_SECONDS}`,
+      },
+    }
+  );
 }

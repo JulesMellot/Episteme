@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFile } from "@/lib/wikipedia";
 import { normalizeWikiLanguage } from "@/lib/wiki-language";
 
+const FILE_REVALIDATE_SECONDS = 3600;
+const FILE_STALE_SECONDS = 86400;
+
 function normalizeFileQueryTitle(title: string) {
   const cleaned = title.replace(/_/g, " ").trim();
   if (/^fichier:/i.test(cleaned)) return `File:${cleaned.slice("Fichier:".length)}`;
@@ -25,7 +28,13 @@ async function getFileViaActionApi(title: string, lang: string) {
   api.searchParams.set("format", "json");
   api.searchParams.set("formatversion", "2");
 
-  const res = await fetch(api, { cache: "no-store" });
+  const res = await fetch(api, {
+    cache: "force-cache",
+    next: {
+      revalidate: FILE_REVALIDATE_SECONDS,
+      tags: ["wikipedia-file"],
+    },
+  });
   if (!res.ok) return null;
 
   const data = (await res.json()) as {
@@ -81,15 +90,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "File not found." }, { status: 404 });
   }
 
-  return NextResponse.json({
-    title: file.title,
-    fileUrl: file.fileUrl,
-    thumbUrl: file.thumbUrl,
-    mime: file.mime,
-    width: file.width,
-    height: file.height,
-    summary: file.summary,
-    descriptionHtml: file.descriptionHtml,
-    licenseHtml: file.licenseHtml,
-  });
+  return NextResponse.json(
+    {
+      title: file.title,
+      fileUrl: file.fileUrl,
+      thumbUrl: file.thumbUrl,
+      mime: file.mime,
+      width: file.width,
+      height: file.height,
+      summary: file.summary,
+      descriptionHtml: file.descriptionHtml,
+      licenseHtml: file.licenseHtml,
+    },
+    {
+      headers: {
+        "Cache-Control": `public, max-age=0, s-maxage=${FILE_REVALIDATE_SECONDS}, stale-while-revalidate=${FILE_STALE_SECONDS}`,
+      },
+    }
+  );
 }

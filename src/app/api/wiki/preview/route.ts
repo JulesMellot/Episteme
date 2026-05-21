@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getArticlePreview } from "@/lib/wikipedia";
 import { normalizeWikiLanguage } from "@/lib/wiki-language";
 
+const PREVIEW_REVALIDATE_SECONDS = 86400;
+const PREVIEW_STALE_SECONDS = 604800;
+
 function toPreviewImageProxyUrl(url: string | null) {
   if (!url) return null;
 
@@ -37,9 +40,16 @@ export async function GET(request: NextRequest) {
       }
     : null;
 
-  return NextResponse.json({
-    title,
-    language,
-    preview: normalizedPreview,
-  });
+  return NextResponse.json(
+    {
+      title,
+      language,
+      preview: normalizedPreview,
+    },
+    {
+      headers: {
+        "Cache-Control": `public, max-age=0, s-maxage=${PREVIEW_REVALIDATE_SECONDS}, stale-while-revalidate=${PREVIEW_STALE_SECONDS}`,
+      },
+    }
+  );
 }

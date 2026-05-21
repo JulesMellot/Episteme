@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { resolveUiLocale } from "@/lib/wiki-language";
+import { extractModalTargetFromHref, type WikiMediaModalRequest } from "@/lib/wiki-media-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -18,6 +19,7 @@ import {
 
 interface WikiMediaModalProps {
   language: string;
+  initialRequest?: WikiMediaModalRequest | null;
 }
 
 interface MediaFilePayload {
@@ -45,80 +47,7 @@ interface ModalState {
 
 const modalEase = [0.16, 1, 0.3, 1] as const;
 
-function normalizeMediaTitle(rawTitle: string) {
-  const cleaned = rawTitle.replace(/_/g, " ").trim();
-  if (/^fichier:/i.test(cleaned)) return `File:${cleaned.slice("Fichier:".length)}`;
-  if (/^image:/i.test(cleaned)) return `File:${cleaned.slice("Image:".length)}`;
-  return cleaned;
-}
-
-function parseSpecialMapPath(wikiTitle: string) {
-  const normalized = wikiTitle.replace(/^spécial:/i, "Special:");
-  const match = normalized.match(/^Special:Map\/(\d+)\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)(?:\/[^/]+)?$/i);
-  if (!match) return null;
-
-  const zoom = Number(match[1]);
-  const lat = Number(match[2]);
-  const lon = Number(match[3]);
-
-  if (!Number.isFinite(zoom) || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  if (zoom < 0 || zoom > 19) return null;
-  if (lat < -90 || lat > 90) return null;
-  if (lon < -180 || lon > 180) return null;
-
-  return { zoom, lat, lon };
-}
-
-function createOsmEmbedUrl({ zoom, lat, lon }: { zoom: number; lat: number; lon: number }) {
-  const lonDelta = Math.max(360 / 2 ** zoom, 0.01);
-  const latDelta = Math.max(170 / 2 ** zoom, 0.01);
-  const minLon = Math.max(-180, lon - lonDelta);
-  const maxLon = Math.min(180, lon + lonDelta);
-  const minLat = Math.max(-90, lat - latDelta);
-  const maxLat = Math.min(90, lat + latDelta);
-  const bbox = `${minLon},${minLat},${maxLon},${maxLat}`;
-  const marker = `${lat},${lon}`;
-
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(marker)}`;
-}
-
-function extractModalTargetFromHref(href: string, language: string) {
-  try {
-    const url = new URL(href, window.location.href);
-    const pathname = url.pathname;
-    if (!pathname.startsWith("/wiki/")) return null;
-    const wikiTitle = decodeURIComponent(pathname.slice("/wiki/".length)).replace(/_/g, " ").trim();
-    const normalized = normalizeMediaTitle(wikiTitle);
-
-    if (/^(file|image|fichier):/i.test(wikiTitle)) {
-      return {
-        mode: "file" as const,
-        title: normalized,
-      };
-    }
-
-    if (/^(special|spécial):map(\/|$)/i.test(wikiTitle)) {
-      const mapParams = parseSpecialMapPath(wikiTitle);
-      const wikipediaMapUrl = new URL(
-        `${url.pathname}${url.search}${url.hash}`,
-        `https://${language}.wikipedia.org`
-      ).toString();
-
-      return {
-        mode: "map" as const,
-        title: "Wikipedia Map",
-        mapUrl: mapParams ? createOsmEmbedUrl(mapParams) : null,
-        sourceHref: wikipediaMapUrl,
-      };
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export function WikiMediaModal({ language }: WikiMediaModalProps) {
+export function WikiMediaModal({ language, initialRequest = null }: WikiMediaModalProps) {
   const [state, setState] = useState<ModalState>({
     open: false,
     loading: false,
@@ -129,6 +58,7 @@ export function WikiMediaModal({ language }: WikiMediaModalProps) {
     mapUrl: null,
     data: null,
   });
+  const handledInitialRequestRef = useRef<string | null>(null);
 
   const imageSrc = useMemo(() => state.data?.thumbUrl ?? state.data?.fileUrl ?? null, [state.data]);
   const uiLocale = resolveUiLocale(language);
@@ -177,8 +107,88 @@ export function WikiMediaModal({ language }: WikiMediaModalProps) {
           openWikiMap: "Open on Wikipedia",
         };
 
+  const openMediaRequest = useCallback(
+    async (request: WikiMediaModalRequest) => {
+      if (request.mode === "map") {
+        setState({
+          open: true,
+          loading: false,
+          error: null,
+          sourceHref: request.sourceHref,
+          mode: "map",
+          title: request.title ?? uiCopy.mapTitle,
+          mapUrl: request.mapUrl,
+          data: null,
+        });
+        return;
+      }
+
+      setState({
+        open: true,
+        loading: true,
+        error: null,
+        sourceHref: request.sourceHref,
+        mode: "file",
+        title: request.title,
+        mapUrl: null,
+        data: null,
+      });
+
+      try {
+        const params = new URLSearchParams({
+          title: request.title,
+          lang: language,
+        });
+        const response = await fetch(`/api/wiki/file?${params.toString()}`, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = (await response.json()) as MediaFilePayload;
+        setState({
+          open: true,
+          loading: false,
+          error: null,
+          sourceHref: request.sourceHref,
+          mode: "file",
+          title: payload.title,
+          mapUrl: null,
+          data: payload,
+        });
+      } catch {
+        setState({
+          open: true,
+          loading: false,
+          error: uiCopy.loadError,
+          sourceHref: request.sourceHref,
+          mode: "file",
+          title: request.title,
+          mapUrl: null,
+          data: null,
+        });
+      }
+    },
+    [language, uiCopy.loadError, uiCopy.mapTitle]
+  );
+
   useEffect(() => {
-    const onClick = async (event: MouseEvent) => {
+    if (!initialRequest) return;
+
+    const requestKey = `${initialRequest.mode}:${initialRequest.sourceHref}:${initialRequest.title}`;
+    if (handledInitialRequestRef.current === requestKey) return;
+
+    handledInitialRequestRef.current = requestKey;
+    void openMediaRequest(initialRequest);
+  }, [initialRequest, openMediaRequest]);
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented) return;
       if (event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -192,79 +202,17 @@ export function WikiMediaModal({ language }: WikiMediaModalProps) {
       const href = anchor.getAttribute("href");
       if (!href) return;
 
-      const modalTarget = extractModalTargetFromHref(href, language);
+      const modalTarget = extractModalTargetFromHref(href, language, window.location.href);
       if (!modalTarget) return;
 
       event.preventDefault();
       event.stopPropagation();
-
-      if (modalTarget.mode === "map") {
-        setState({
-          open: true,
-          loading: false,
-          error: null,
-          sourceHref: modalTarget.sourceHref ?? href,
-          mode: "map",
-          title: modalTarget.title ?? uiCopy.mapTitle,
-          mapUrl: modalTarget.mapUrl,
-          data: null,
-        });
-        return;
-      }
-
-      setState({
-        open: true,
-        loading: true,
-        error: null,
-        sourceHref: href,
-        mode: "file",
-        title: modalTarget.title,
-        mapUrl: null,
-        data: null,
-      });
-
-      try {
-        const params = new URLSearchParams({
-          title: modalTarget.title,
-          lang: language,
-        });
-        const response = await fetch(`/api/wiki/file?${params.toString()}`, {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const payload = (await response.json()) as MediaFilePayload;
-        setState({
-          open: true,
-          loading: false,
-          error: null,
-          sourceHref: href,
-          mode: "file",
-          title: payload.title,
-          mapUrl: null,
-          data: payload,
-        });
-      } catch {
-        setState({
-          open: true,
-          loading: false,
-          error: uiCopy.loadError,
-          sourceHref: href,
-          mode: "file",
-          title: modalTarget.title,
-          mapUrl: null,
-          data: null,
-        });
-      }
+      void openMediaRequest(modalTarget);
     };
 
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [language, uiCopy.loadError, uiCopy.mapTitle]);
+  }, [language, openMediaRequest]);
 
   useEffect(() => {
     if (!state.open) return;
