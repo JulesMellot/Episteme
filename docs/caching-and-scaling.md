@@ -19,12 +19,21 @@ one variant per `(slug, lang)`.
   ```
   (starts_with(http.request.uri.path, "/wiki/")
    and http.request.uri.query contains "lang="
-   and not starts_with(http.request.uri.path, "/wiki/search"))
+   and not starts_with(http.request.uri.path, "/wiki/search")
+   and len(http.request.headers["rsc"]) == 0)
   → Eligible for cache · Edge TTL: Override origin → 1 hour
   ```
-  `query contains "lang="` keeps the per-visitor redirects (no `lang`) out of the
-  cache. Cloudflare keys on the full query string, so `_rsc` RSC navigation
-  requests get distinct cache keys automatically.
+  - `query contains "lang="` keeps the per-visitor redirects (no `lang`) out of
+    the cache.
+  - `len(http.request.headers["rsc"]) == 0` is **critical**. The page renders as a
+    dynamic route, so the origin sends `Cache-Control: no-store` and relies on this
+    rule's "Override origin" TTL to be cached at all. But "Override origin" also
+    ignores the `Vary: rsc` header Next sets. A client-side (soft) navigation
+    requests the **same** `?lang=` URL with an `RSC` header and gets a
+    `text/x-component` RSC payload back. Without this condition, Cloudflare caches
+    that RSC payload under the HTML cache key and then serves raw RSC text
+    (`0:{"f":[[[...`) to real browsers. Excluding requests that carry the `rsc`
+    header means only true HTML document responses are ever cached.
 
 > ⚠️ Do **not** re-introduce `cookies()`/`headers()` into `/wiki/[slug]`. It flips
 > the route to dynamic (`Cache-Control: no-store`) and the CDN stops caching.
