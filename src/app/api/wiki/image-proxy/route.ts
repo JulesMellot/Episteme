@@ -77,13 +77,29 @@ export async function GET(request: NextRequest) {
     upstreamHeaders.set("Origin", new URL(referer).origin);
   }
 
-  const upstream = await fetch(remoteUrl, {
-    headers: upstreamHeaders,
-    next: {
-      revalidate: 60 * 60,
-      tags: ["wikimedia-image-proxy"],
-    },
-  });
+  // IMPORTANT: never use `next: { revalidate }` here. That makes Next buffer and
+  // persist every image body to the on-disk Data Cache (.next/cache), which is
+  // unbounded and never evicts — it grew to hundreds of GB in production.
+  // `no-store` streams images straight through; the `Cache-Control` header below
+  // lets Cloudflare cache them at the edge instead of on our disk.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(remoteUrl, {
+      headers: upstreamHeaders,
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch {
+    clearTimeout(timeout);
+    return NextResponse.json(
+      { error: "Upstream image fetch failed." },
+      { status: 502 }
+    );
+  }
+  clearTimeout(timeout);
 
   if (!upstream.ok || !upstream.body) {
     return NextResponse.json(
