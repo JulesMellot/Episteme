@@ -5,8 +5,7 @@ import { WikiMediaModalTrigger } from "@/components/WikiMediaModalTrigger";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Image from "next/image";
-import { normalizeWikiLanguage, resolveUiLocale, WIKI_LANGUAGE_COOKIE_NAME } from "@/lib/wiki-language";
-import { cookies } from "next/headers";
+import { normalizeWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
 import { WikiArticleContent } from "@/components/WikiArticleContent";
 import { buildWikiArticleUrl, truncateDescription } from "@/lib/site";
@@ -24,10 +23,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const { slug } = await params;
   const { lang } = await searchParams;
   const decodedSlug = decodeURIComponent(slug).replace(/_/g, " ");
-  const cookieStore = await cookies();
-  const language = normalizeWikiLanguage(
-    (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
-  );
+  // Language comes from the URL only (proxy.ts guarantees `?lang` is present),
+  // so the rendered page is fully determined by its URL and safe for the CDN to
+  // cache. normalizeWikiLanguage falls back to the default for missing/invalid values.
+  const language = normalizeWikiLanguage(Array.isArray(lang) ? lang[0] : lang);
   const uiLocale = resolveUiLocale(language);
   const page = await getPage(slug, 2, language);
   const title = page?.title ?? decodedSlug;
@@ -76,10 +75,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export default async function WikiPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { lang } = await searchParams;
-  const cookieStore = await cookies();
-  const language = normalizeWikiLanguage(
-    (Array.isArray(lang) ? lang[0] : lang) ?? cookieStore.get(WIKI_LANGUAGE_COOKIE_NAME)?.value
-  );
+  // Language from the URL only — see generateMetadata above. Keeps the page
+  // cacheable per-language without cookie ambiguity.
+  const language = normalizeWikiLanguage(Array.isArray(lang) ? lang[0] : lang);
   const uiLocale = resolveUiLocale(language);
   const uiCopy =
     uiLocale === "fr"

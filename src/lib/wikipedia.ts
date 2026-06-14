@@ -82,16 +82,25 @@ async function fetchWithRetries(
   {
     retries = 2,
     retryStatuses = [429, 500, 502, 503, 504],
+    timeoutMs = 12_000,
   }: {
     retries?: number;
     retryStatuses?: number[];
+    timeoutMs?: number;
   } = {}
 ): Promise<Response | null> {
   let lastResponse: Response | null = null;
 
   for (let i = 0; i <= retries; i++) {
+    // Per-attempt timeout: without this a slow/hung Wikipedia connection ties up
+    // a request indefinitely. Under load that exhausts the single Node process
+    // and brings the whole app down. The controller aborts the fetch on timeout,
+    // which throws and falls through to the retry/return logic below.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      const res = await fetch(input, init);
+      const res = await fetch(input, { ...init, signal: controller.signal });
       lastResponse = res;
 
       if (res.ok || res.status === 404) {
@@ -110,6 +119,8 @@ async function fetchWithRetries(
         continue;
       }
       return lastResponse;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -523,18 +534,18 @@ export async function getFile(slug: string, retries = 2, language?: string): Pro
 export async function getArticle(slug: string, retries = 2, language?: string): Promise<WikipediaArticle | null> {
   const restTitle = normalizeSlug(slug).replace(/\s+/g, "_");
   const url = `${wikipediaApiBase(language)}/api/rest_v1/page/html/${encodeURIComponent(restTitle)}`;
+  // `no-store`: the raw Parsoid HTML is large (0.5–2 MB/article) and persisting it
+  // to Next's on-disk Data Cache is unbounded. The processed result is already
+  // cached by `unstable_cache` (getCachedPage), so this fetch only runs on a real
+  // cache miss / revalidation — no need to also keep the raw blob on disk.
   const res = await fetchWithRetries(
     url,
     {
-      cache: "force-cache",
+      cache: "no-store",
       headers: {
         "User-Agent": USER_AGENT,
         "Api-User-Agent": USER_AGENT,
         "Accept": "text/html; charset=utf-8; profile=\"https://www.mediawiki.org/wiki/Specs/HTML/2.8.0\"",
-      },
-      next: {
-        revalidate: ARTICLE_REVALIDATE_SECONDS,
-        tags: ["wikipedia-article"],
       },
     },
     { retries }
@@ -565,18 +576,16 @@ async function getArticleViaParse(slug: string, retries = 2, language?: string):
   url.searchParams.set("format", "json");
   url.searchParams.set("formatversion", "2");
 
+  // Same rationale as getArticle: the parse API returns large HTML. Don't persist
+  // it to the on-disk Data Cache; unstable_cache holds the processed page instead.
   const res = await fetchWithRetries(
     url,
     {
-      cache: "force-cache",
+      cache: "no-store",
       headers: {
         "User-Agent": USER_AGENT,
         "Api-User-Agent": USER_AGENT,
         "Accept": "application/json",
-      },
-      next: {
-        revalidate: ARTICLE_REVALIDATE_SECONDS,
-        tags: ["wikipedia-article-fallback"],
       },
     },
     { retries }
