@@ -9,7 +9,7 @@ export function absoluteUrl(path = "/") {
   return new URL(path, `${SITE_URL}/`).toString();
 }
 
-function safeDecodeURIComponent(value: string) {
+export function safeDecodeURIComponent(value: string) {
   try {
     return decodeURIComponent(value);
   } catch {

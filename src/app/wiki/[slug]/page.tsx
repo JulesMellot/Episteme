@@ -8,7 +8,7 @@ import Image from "next/image";
 import { normalizeWikiLanguage, resolveUiLocale } from "@/lib/wiki-language";
 import { WikiDonationCTAClient } from "@/components/WikiDonationCTAClient";
 import { WikiArticleContent } from "@/components/WikiArticleContent";
-import { buildWikiArticleUrl, truncateDescription } from "@/lib/site";
+import { buildWikiArticleUrl, safeDecodeURIComponent, truncateDescription } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{
@@ -22,7 +22,9 @@ interface PageProps {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const { lang } = await searchParams;
-  const decodedSlug = decodeURIComponent(slug).replace(/_/g, " ");
+  // safeDecodeURIComponent: bots hit malformed-percent URLs (e.g. a bare `%`),
+  // which make raw decodeURIComponent throw URIError and crash metadata rendering.
+  const decodedSlug = safeDecodeURIComponent(slug).replace(/_/g, " ");
   // Language comes from the URL only (proxy.ts guarantees `?lang` is present),
   // so the rendered page is fully determined by its URL and safe for the CDN to
   // cache. normalizeWikiLanguage falls back to the default for missing/invalid values.
