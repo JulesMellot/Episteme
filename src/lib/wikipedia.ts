@@ -58,7 +58,11 @@ const ARTICLE_REVALIDATE_SECONDS = 3600;
 const SEARCH_REVALIDATE_SECONDS = 300;
 const TRENDING_REVALIDATE_SECONDS = 1800;
 const PREVIEW_REVALIDATE_SECONDS = 86400;
-const DEFAULT_RETRIES = 2;
+// ponytail: 1 retry (2 attempts). getArticle already falls back REST -> parse
+// API, so a failing fetch has several shots; 2 retries on top stacked into a
+// ~48s blank page on a slow upstream. Bump back up only if transient REST
+// failures actually surface as user-visible 404s.
+const DEFAULT_RETRIES = 1;
 const INTERLANGUAGE_SOURCE_CANDIDATES = ["fr", "en", "es", "de", "it", "pt", "ja", "zh", "ar", "ru"] as const;
 const BLOCKED_SELECTOR = "script, style, iframe, frame, object, embed, form, link[rel='stylesheet'], meta[http-equiv='refresh']";
 const STRIPPED_ATTRS = new Set([
@@ -82,7 +86,9 @@ async function fetchWithRetries(
   {
     retries = 2,
     retryStatuses = [429, 500, 502, 503, 504],
-    timeoutMs = 12_000,
+    // ponytail: 8s per attempt. A healthy Wikipedia API answers in ~1s; anything
+    // slower is a stalled/throttled connection and retrying fast beats hanging.
+    timeoutMs = 8_000,
   }: {
     retries?: number;
     retryStatuses?: number[];
@@ -220,43 +226,50 @@ function sanitizeStyleValue(value: string) {
   return style;
 }
 
+function sanitizeElementAttrs($: cheerio.CheerioAPI, el: Element) {
+  const attribs = { ...(el.attribs ?? {}) };
+
+  for (const [name, value] of Object.entries(attribs)) {
+    const lowerName = name.toLowerCase();
+    const normalizedValue = typeof value === "string" ? value : "";
+
+    if (
+      lowerName.startsWith("on") ||
+      lowerName.startsWith("data-") ||
+      STRIPPED_ATTRS.has(lowerName)
+    ) {
+      $(el).removeAttr(name);
+      continue;
+    }
+
+    if (lowerName === "style") {
+      const safeStyle = sanitizeStyleValue(normalizedValue);
+      if (!safeStyle) {
+        $(el).removeAttr(name);
+      } else {
+        $(el).attr("style", safeStyle);
+      }
+      continue;
+    }
+
+    if ((lowerName === "href" || lowerName === "src" || lowerName === "xlink:href") && !isSafeUrl(normalizedValue, lowerName === "href" ? "href" : "src")) {
+      $(el).removeAttr(name);
+    }
+  }
+}
+
+// Strip blocked elements and unsafe attributes from the descendants of $scope,
+// mutating the tree in place. Lets callers that already hold a parsed tree skip
+// the re-parse that sanitizeHtmlFragment does.
+function sanitizeInPlace($: cheerio.CheerioAPI, $scope: cheerio.Cheerio<Element>) {
+  $scope.find(BLOCKED_SELECTOR).remove();
+  $scope.find("*").each((_, el) => sanitizeElementAttrs($, el));
+}
+
 function sanitizeHtmlFragment(input: string) {
   const $ = cheerio.load(`<body>${stripScriptTags(input)}</body>`);
   const $body = $("body");
-
-  $body.find(BLOCKED_SELECTOR).remove();
-  $body.find("*").each((_, el) => {
-    const attribs = { ...(el.attribs ?? {}) };
-
-    for (const [name, value] of Object.entries(attribs)) {
-      const lowerName = name.toLowerCase();
-      const normalizedValue = typeof value === "string" ? value : "";
-
-      if (
-        lowerName.startsWith("on") ||
-        lowerName.startsWith("data-") ||
-        STRIPPED_ATTRS.has(lowerName)
-      ) {
-        $(el).removeAttr(name);
-        continue;
-      }
-
-      if (lowerName === "style") {
-        const safeStyle = sanitizeStyleValue(normalizedValue);
-        if (!safeStyle) {
-          $(el).removeAttr(name);
-        } else {
-          $(el).attr("style", safeStyle);
-        }
-        continue;
-      }
-
-      if ((lowerName === "href" || lowerName === "src" || lowerName === "xlink:href") && !isSafeUrl(normalizedValue, lowerName === "href" ? "href" : "src")) {
-        $(el).removeAttr(name);
-      }
-    }
-  });
-
+  sanitizeInPlace($, $body);
   return $body.html() ?? "";
 }
 
@@ -359,10 +372,15 @@ async function getPageUncached(slug: string, retries = DEFAULT_RETRIES, language
   const article = await getArticle(slug, retries, language);
   if (article) return { kind: "article", ...article };
 
+  // ponytail: the fallback chain (interlanguage links across ~10 source langs,
+  // then local search) is best-effort. With retries it could stack
+  // 10 langs × N attempts × timeout into a 45s blank page when Wikipedia is
+  // slow/throttling. One shot each: it still resolves the common case (the
+  // target lang is tried first) but can never become the latency tail.
   const normalizedLanguage = normalizeWikiLanguage(language);
   const translatedTitle = await resolveInterlanguageTitle(slug, {
     targetLanguage: normalizedLanguage,
-    retries,
+    retries: 0,
   });
   if (translatedTitle) {
     const translated = await getArticle(translatedTitle, retries, normalizedLanguage);
@@ -373,7 +391,7 @@ async function getPageUncached(slug: string, retries = DEFAULT_RETRIES, language
   const guessQuery = normalizeSlug(slug);
   const candidates = await searchWikipedia(guessQuery, {
     limit: 1,
-    retries,
+    retries: 0,
     language: normalizedLanguage,
   });
   const bestTitle = candidates[0]?.title;
@@ -1042,9 +1060,13 @@ function parseWikipediaHtml(slug: string, rawHtml: string): WikipediaArticle {
     // For now, we just copy it.
   }
 
-  let html = $('body').html() || '';
-  
-  html = sanitizeHtmlFragment(html);
+  // Sanitize the body on the tree we already parsed instead of re-parsing the
+  // serialized HTML. The re-parse alone cost ~300ms of blocking CPU per large
+  // article — multiplied across cache misses it pinned the server at ~99% CPU.
+  // The infobox was already detached as a string above and is small, so
+  // re-parsing it stays cheap.
+  sanitizeInPlace($, $('body'));
+  const html = $('body').html() || '';
   if (infoboxHtml) {
     infoboxHtml = sanitizeHtmlFragment(infoboxHtml);
   }
