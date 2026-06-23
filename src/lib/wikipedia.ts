@@ -123,13 +123,18 @@ async function fetchWithRetries(
         return res;
       }
 
+      console.error(`[wiki-fetch] ${res.status} ${res.statusText} attempt=${i} ${String(input)}`);
+
       if (retryStatuses.includes(res.status) && i < retries) {
         await sleep(500 * (i + 1));
         continue;
       }
 
       return res;
-    } catch {
+    } catch (err) {
+      console.error(
+        `[wiki-fetch] threw attempt=${i} ${String(input)}: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`
+      );
       if (i < retries) {
         await sleep(500 * (i + 1));
         continue;
