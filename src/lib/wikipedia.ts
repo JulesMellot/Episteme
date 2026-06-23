@@ -106,7 +106,17 @@ async function fetchWithRetries(
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const res = await fetch(input, { ...init, signal: controller.signal });
+      // ponytail: force uncompressed responses. A Node/undici bug
+      // (`controller[kState].transformAlgorithm is not a function`) crashes the
+      // gzip/br decompression stream on some runtime versions, which made every
+      // Wikipedia fetch throw and every article 404 in prod. Asking for identity
+      // means undici never builds that decompression stream. Costs more bytes
+      // server<->Wikipedia (results are cached anyway); version-independent fix.
+      const res = await fetch(input, {
+        ...init,
+        headers: { ...(init.headers as Record<string, string>), "Accept-Encoding": "identity" },
+        signal: controller.signal,
+      });
       lastResponse = res;
 
       if (res.ok || res.status === 404) {
