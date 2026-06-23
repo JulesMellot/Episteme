@@ -80,12 +80,25 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// ponytail: circuit breaker for Wikimedia 429s. One article cache-miss fans out
+// into ~10-20 upstream calls (interlanguage links across fr/en/es/de/it/pt/ja/
+// zh/ar/ru + local search + parse fallback). Under a bot crawl that tripped
+// Wikimedia's rate limit, retrying and falling back only dug deeper: every
+// request made the 429 worse and nothing recovered (a death spiral -> all
+// articles 404). On a 429 we stop ALL upstream calls for a cooldown so the rate
+// window can reset. Ceiling: one global gate per process (not per wiki/per IP);
+// fine for a single origin container.
+let wikipediaRateLimitedUntil = 0;
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+
 async function fetchWithRetries(
   input: string | URL,
   init: RequestInit,
   {
     retries = 2,
-    retryStatuses = [429, 500, 502, 503, 504],
+    // 429 is deliberately NOT retryable: retrying a rate-limit makes it worse.
+    // It trips the circuit breaker below instead.
+    retryStatuses = [500, 502, 503, 504],
     // ponytail: 8s per attempt. A healthy Wikipedia API answers in ~1s; anything
     // slower is a stalled/throttled connection and retrying fast beats hanging.
     timeoutMs = 8_000,
@@ -95,6 +108,11 @@ async function fetchWithRetries(
     timeoutMs?: number;
   } = {}
 ): Promise<Response | null> {
+  // Circuit open: we were rate-limited recently — don't pile on more requests.
+  if (Date.now() < wikipediaRateLimitedUntil) {
+    return null;
+  }
+
   let lastResponse: Response | null = null;
 
   for (let i = 0; i <= retries; i++) {
@@ -124,6 +142,18 @@ async function fetchWithRetries(
       }
 
       console.error(`[wiki-fetch] ${res.status} ${res.statusText} attempt=${i} ${String(input)}`);
+
+      // Rate limited: open the circuit so the whole fan-out stops hammering.
+      if (res.status === 429) {
+        const retryAfter = Number(res.headers.get("retry-after"));
+        const cooldown =
+          Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(retryAfter * 1000, 5 * 60_000)
+            : RATE_LIMIT_COOLDOWN_MS;
+        wikipediaRateLimitedUntil = Date.now() + cooldown;
+        console.error(`[wiki-fetch] 429 — pausing all Wikipedia calls for ${cooldown}ms`);
+        return res;
+      }
 
       if (retryStatuses.includes(res.status) && i < retries) {
         await sleep(500 * (i + 1));
